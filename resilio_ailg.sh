@@ -9,12 +9,6 @@ if [ $1 ]; then
 		chmod 777 $1/config_sync
 		cp -r $1/config/* $1/config_sync/
 	fi
-	#wget -O /tmp/resilio.tgz http://docker.xiaoya.pro/resilio.tgz
-	#cd $1
-	#tar zxf /tmp/resilio.tgz
-	#wget -O /tmp/dot_sync.tgz http://docker.xiaoya.pro/dot_sync.tgz
-	#cd $1
-	#tar zxf /tmp/dot_sync.tgz
 	docker run -d \
 	  -m ${3}M \
 	  --log-driver none \
