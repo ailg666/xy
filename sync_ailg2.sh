@@ -1,8 +1,7 @@
 #!/bin/bash
 #container_name=$1
 #config_dir=$2
-set -x
-echo "config_dir is : /emby/config"
+
 rm -f /emby/config/*.sql
 mount_paths=()
 while IFS= read -r line; do
@@ -81,8 +80,3 @@ cat /emby/config/*.sql >> $temp_file
 echo "PRAGMA foreign_keys = ON;" >> $temp_file
 mv $temp_file /emby/config/media_items_all.sql
 chmod 777 /emby/config/*.sql
-set +x
-
-
-
-
