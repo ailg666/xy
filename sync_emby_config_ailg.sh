@@ -18,12 +18,6 @@ else
 	EMBY_URL=$(cat /etc/xiaoya/emby_server.txt)
 fi
 
-#local_sha=$(docker inspect --format='{{index .RepoDigests 0}}' xiaoyaliu/glue:latest  |cut -f2 -d:)
-#remote_sha=$(curl -s "https://hub.docker.com/v2/repositories/xiaoyaliu/glue/tags/latest"|grep -o '"digest":"[^"]*' | grep -o '[^"]*$' |tail -n1 |cut -f2 -d:)
-#if [ ! "$local_sha" == "$remote_sha" ]; then
-#        docker rmi xiaoyaliu/glue:latest
-#fi
-
 media_lib=$1
 if [ ! -d $media_lib/config_sync ]; then
 	mkdir $media_lib/config_sync
@@ -55,7 +49,7 @@ if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" |grep Chap
 	${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump UserDatas" > /tmp/emby_user.sql
 	${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump ItemExtradata" > /tmp/emby_library_mediaconfig.sql
 	${SQLITE_COMMAND} /emby_userdata.sh
-	read -ep "**检查sql"
+	#read -ep "**检查sql"
 	rm $media_lib/config/data/library.db*
 	cp $media_lib/config_sync/data/library.db* $media_lib/config/data/
 	${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db "DROP TABLE IF EXISTS UserDatas;"
