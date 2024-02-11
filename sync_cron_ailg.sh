@@ -16,7 +16,7 @@ if command -v crontab >/dev/null 2>&1; then
 	crontab /tmp/cronjob.tmp
 
 	echo -e "\033[33m"
-	echo -e '已经添加下面的记录到crontab定时任务，每三天更新一次config'
+	echo -e "已经添加下面的记录到crontab定时任务，每$4天更新一次config"
 	echo '$minu $hour */$4 * * bash -c "$(curl https://gitee.com/i-xxg/xy/raw/master/sync_emby_config_ailg.sh)" -s' " $1 $2 $5 $6 >> $1/resilio/cron.log" ' 2>&1'
 	echo -e "\033[0m"
 elif [[ $7 == syno ]];then
