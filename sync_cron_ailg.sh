@@ -8,8 +8,8 @@ fi
 
 echo -e "hour=$hour"
 echo -e "minu=$minu"
-echo -e "$1\n$2\n$3\n$4\n$5\n$6\n$7"
-read -ep "**check"
+#echo -e "$1\n$2\n$3\n$4\n$5\n$6\n$7"
+#read -ep "**check"
 if command -v crontab >/dev/null 2>&1; then
 	crontab -l |grep -v sync_emby_config > /tmp/cronjob.tmp
 	echo '$minu $hour */$4 * * bash -c "$(curl https://gitee.com/i-xxg/xy/raw/master/sync_emby_config_ailg.sh)" -s' " $1 $2 $5 $6 >> $1/resilio/cron.log" >> /tmp/cronjob.tmp
