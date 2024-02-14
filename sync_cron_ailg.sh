@@ -24,5 +24,5 @@ elif [[ $7 == syno ]];then
 	echo -e "\033[1;35m已创建/etc/crontab.bak备份文件！\033[0m"
 	
 	sed -i '/sync_emby_config/d' /etc/crontab
-	echo "$minu $hour */$4 * * bash -c \"\$(curl https://gitee.com/i-xxg/xy/raw/master/sync_emby_config_ailg.sh)\" -s $1 $2 $5 $6 >> $1/resilio/cron.log" >> /etc/crontab
+	echo "$minu $hour */$4 * * root bash -c \"\$(curl https://gitee.com/i-xxg/xy/raw/master/sync_emby_config_ailg.sh)\" -s $1 $2 $5 $6 >> $1/resilio/cron.log" >> /etc/crontab
 fi
