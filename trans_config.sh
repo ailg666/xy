@@ -9,7 +9,7 @@ function13() {
 	echo -e "\n"
 	echo -e "3、作者不对使用本脚本造成的任何后果负责，有任何顾虑，请勿运行脚本，按CTRL+C立即退出；"
 	echo -e "\n"
-	echo -e "4、如果您喜欢这个脚本，可以请我喝咖啡："
+	echo -e "4、如果您喜欢这个脚本，可以请我喝咖啡：http://qr61.cn/oVTrfl/q9n5NeV"
 	echo -e "——————————————————————————————————————————————————————————————————————————————————"
 	echo -e "\e[0m"
     
@@ -30,9 +30,9 @@ function13() {
     fi
     mv $media_dir/config/data/library.db $media_dir/config/data/library.org.db
     chmod 777 $media_dir/config/data/library.org.db
-    curl -o $media_dir/config/data/library.db https://gitee.com/i-xxg/xiaoya/raw/master/library.lc.db
-    curl -o $media_dir/temp.sql	https://gitee.com/i-xxg/xiaoya/raw/master/all.sql
-	docker run -it --security-opt seccomp=unconfined --rm --net=host -v $media_dir:/media -e LANG=C.UTF-8  xiaoyaliu/glue:latest sqlite3 /media/config/data/library.db ".read /media/temp.sql"
+    curl -o $media_dir/config/data/library.db https://xy.ggbond.org/xy/library.lc.db
+    curl -o $media_dir/temp.sql	https://xy.ggbond.org/xy/all.sql
+	docker run -it --security-opt seccomp=unconfined --rm --net=host -v $media_dir:/media -e LANG=C.UTF-8  ailg/ggbond:latest sqlite3 /media/config/data/library.db ".read /media/temp.sql"
 	#rm -f $media_dir/temp.sql
 }
 
