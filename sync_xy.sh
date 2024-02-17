@@ -1,6 +1,17 @@
 #!/bin/bash
 function11() {
     clear
+    echo -e "\e[33m"
+	echo -e "—————————————————————————————————使  用  说  明———————————————————————————————————"
+	echo -e "1、本脚本为小雅EMBY全家桶的定制化安装脚本，使用于群晖系统环境，不保证其他系统通用；"
+	echo -e "\n"
+	echo -e "2、本脚本为个人自用，不维护，不更新，不保证适用每个人的环境，请勿用于商业用途；"
+	echo -e "\n"
+	echo -e "3、作者不对使用本脚本造成的任何后果负责，有任何顾虑，请勿运行脚本，按CTRL+C立即退出；"
+	echo -e "\n"
+	echo -e "4、如果您喜欢这个脚本，可以请我喝咖啡：http://qr61.cn/oVTrfl/q9n5NeV"
+	echo -e "——————————————————————————————————————————————————————————————————————————————————"
+	echo -e "\e[0m"
 	echo -e "\n"
     echo -e "————————————————————————————————————————————————————— \033[1;33mA  I  老  G\033[0m ——————————————————————————————————————————————————"
     echo -e "\n"
@@ -23,7 +34,9 @@ function11() {
 		read -ep "请输入您要同步的emby容器名（名字是默认的emby请直接回车）" emby_name
 		read -ep "请输入您要同步的resilio容器名（名字是默认的resilio请直接回车）" resilio_name
 		bash -c "$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)" -s $media_dir $config_dir $emby_name $resilio_name >> $media_dir/resilio/cron.log
-		
+		echo -e "已在同级目录（config/data）为您创建library.db的备份文件library.org.db"
+        echo -e "\033[1;35m如果emby报错，先停止容器，删除library.db/library.db-shm/library.db-wal三个文件\n将library.org.db改名为library.db，重启emby容器即可恢复原数据！\033[0m"
+
 	elif [[ $f11_choose == 3 ]]; then	
 		function12
 		echo -e "\033[1;37m请设置您希望resilio每次同步的时间：\033[0m"
