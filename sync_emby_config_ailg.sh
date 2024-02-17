@@ -62,6 +62,8 @@ if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" |grep Chap
 	cp -rf $media_lib/config_sync/cache/* $media_lib/config/cache/
 	cp -rf $media_lib/config_sync/metadata/* $media_lib/config/metadata/
 	chmod -R 777 $media_lib/config/data $media_lib/config/cache $media_lib/config/metadata
+    rm -f $media_lib/config/*.sql
+    rm -f $media_lib/config/mount_paths.txt
 	echo "$data 复制 config_sync 至 config 完成"
 	echo "$data Emby 和 Resilio 重启中 ...."
 	docker start ${EMBY_NAME}
