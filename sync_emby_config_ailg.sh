@@ -51,6 +51,7 @@ if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" |grep Chap
 	${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump ItemExtradata" > /tmp/emby_library_mediaconfig.sql
 	${SQLITE_COMMAND} /emby_userdata.sh
 	#read -ep "**检查sql"
+    mv  $media_lib/config/data/library.db $media_lib/config/data/library.org.db
 	rm $media_lib/config/data/library.db*
 	cp $media_lib/config_sync/data/library.db* $media_lib/config/data/
 	${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db "DROP TABLE IF EXISTS UserDatas;"
