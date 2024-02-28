@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 docker run -d --name emby -v /etc/nsswitch.conf:/etc/nsswitch.conf \
 -v /mnt/media_rw/d48ded09-158b-4536-b78b-0279c6936327/.ugreen_nas/312373/Docker/emby-xy/config:/config \
 -v /mnt/media_rw/d48ded09-158b-4536-b78b-0279c6936327/.ugreen_nas/312373/Docker/emby-xy/xiaoya:/media \
