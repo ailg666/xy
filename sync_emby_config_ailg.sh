@@ -70,7 +70,7 @@ ${SQLITE_COMMAND} /emby_userdata.sh
 mv  $media_lib/config/data/library.db $media_lib/config/data/library.org.db
 [[ -f $media_lib/config/data/library.db-wal ]] && mv $media_lib/config/data/library.db-wal $media_lib/config/data/library.db-wal.bak
 [[ -f $media_lib/config/data/library.db-shm ]] && mv $media_lib/config/data/library.db-shm $media_lib/config/data/library.db-shm.bak
-rm $media_lib/config/data/library.db*
+#rm $media_lib/config/data/library.db*
 	
 # 下载解压新config数据
 if command -v ifconfig > /dev/null 2>&1; then
