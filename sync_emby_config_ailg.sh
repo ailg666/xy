@@ -26,12 +26,15 @@ if [ ! -d $media_lib/config_sync ]; then
 	mkdir $media_lib/config_sync
 fi
 
-local_sha=$(docker inspect --format='{{index .RepoDigests 0}}' ailg/ggbond:latest  |cut -f2 -d:)
-remote_sha=$(curl -s "https://hub.docker.com/v2/repositories/ailg/ggbond/tags/latest"|grep -o '"digest":"[^"]*' | grep -o '[^"]*$' |tail -n1 |cut -f2 -d:)
-if [ ! "$local_sha" == "$remote_sha" ]; then
-	docker rmi ailg/ggbond:latest
-    docker pull ailg/ggbond:latest
-fi
+#local_sha=$(docker inspect --format='{{index .RepoDigests 0}}' ailg/ggbond:latest  |cut -f2 -d:)
+#remote_sha=$(curl -s "https://hub.docker.com/v2/repositories/ailg/ggbond/tags/latest"|grep -o '"digest":"[^"]*' | grep -o '[^"]*$' |tail -n1 |cut -f2 -d:)
+#if [ ! "$local_sha" == "$remote_sha" ]; then
+#	docker rmi ailg/ggbond:latest
+#    docker pull ailg/ggbond:latest
+#fi
+
+docker rmi ailg/ggbond:latest
+docker pull ailg/ggbond:latest
 
 docker_exist=$(docker images |grep ailg/ggbond )
 if [ -z "$docker_exist" ]; then
