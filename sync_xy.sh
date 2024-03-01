@@ -1,4 +1,27 @@
 #!/bin/bash
+#运行环境初始化
+PATH=${PATH}:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
+export PATH
+
+Blue="\033[1;34m"
+Green="\033[1;32m"
+Red="\033[1;31m"
+Yellow='\033[1;33m'
+Font="\033[0m"
+INFO="[${Green}INFO${Font}]"
+ERROR="[${Red}ERROR${Font}]"
+WARN="[${Yellow}WARN${Font}]"
+
+function INFO() {
+    echo -e "${INFO} ${1}"
+}
+function ERROR() {
+    echo -e "${ERROR} ${1}"
+}
+function WARN() {
+    echo -e "${WARN} ${1}"
+}
+
 function11() {
     clear
     echo -e "\e[33m"
@@ -33,10 +56,13 @@ function11() {
         echo -e "\n"
         echo -e "\033[1;31m同步进行中，需要较长时间，请耐心等待，直到出命令行提示符才算结束！\033[0m"
 		bash -c "$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)" -s $media_dir $config_dir $emby_name $resilio_name >> $media_dir/resilio/cron.log
-		echo -e "已在同级目录（config/data）为您创建library.db的备份文件library.org.db"
-        echo -e "\033[1;35m如果emby报错，先停止容器，删除library.db/library.db-shm/library.db-wal三个文件，"
-		echo -e "将library.org.db改名为library.db，library.db-wal.bak改名为library.db-wal（没有此文件则略过），"
-		echo -e "将library.db-shm.bak改名为library.db-shm（没有此文件则略过），重启emby容器即可恢复原数据！\033[0m"
+		WARN "已在同级目录（config/data）为您创建library.db的备份文件library.org.db"
+        WARN "只有emby启动报错，或启动后媒体库丢失才需执行以下操作："
+        echo -e "\033[1;35m1、先停止容器，检查emby媒体库目录的config/data目录中是否有library.org.db备份文件！"
+        echo -e "2、如果没有，说明备份文件已自动恢复，原数据启动不了需要排查其他问题，或重装config目录！"
+        echo -e "3、如果有，继续执行3-5步，先删除library.db/library.db-shm/library.db-wal三个文件！"
+		echo -e "4、将library.org.db改名为library.db，library.db-wal.bak改名为library.db-wal（没有此文件则略过）！"
+		echo -e "5、将library.db-shm.bak改名为library.db-shm（没有此文件则略过），重启emby容器即可恢复原数据！\033[0m"
 
 	elif [[ $f11_choose == 3 ]]; then	
 		echo -e "\033[1;37m请设置您希望resilio每次同步的时间：\033[0m"
