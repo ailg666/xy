@@ -33,7 +33,7 @@ function11() {
 		-s $media_dir $mem_size
 	elif [[ $f11_choose == 2 ]]; then
 		read -ep "请输入您要同步的resilio容器名（名字是默认的resilio请直接回车）" resilio_name
-        echo -e "同步进行中，需要较长时间，请耐心等待，直到出命令行提示符才算结束！"
+        echo -e "\033[1;31m同步进行中，需要较长时间，请耐心等待，直到出命令行提示符才算结束！\033[0m"
 		bash -c "$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)" -s $media_dir $config_dir $emby_name $resilio_name >> $media_dir/resilio/cron.log
 		echo -e "已在同级目录（config/data）为您创建library.db的备份文件library.org.db"
         echo -e "\033[1;35m如果emby报错，先停止容器，删除library.db/library.db-shm/library.db-wal三个文件，"
