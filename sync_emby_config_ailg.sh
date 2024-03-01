@@ -48,7 +48,7 @@ SQLITE_COMMAND_3="docker run -i --security-opt seccomp=unconfined --rm --net=hos
 
 if [[ $(docker ps -a | grep -E "(^|\s)$EMBY_NAME(\s|$)") ]];then
 	#mount_paths=$(docker inspect $EMBY_NAME \
-	| jq -r '.[0].Mounts[] | select(.Destination != "/media" and .Destination != "/config" and .Destination != "/etc/nsswitch.conf") | .Destination')
+	#| jq -r '.[0].Mounts[] | select(.Destination != "/media" and .Destination != "/config" and .Destination != "/etc/nsswitch.conf") | .Destination')
 	#echo $mount_paths
 	#printf "%s\n" "${mount_paths[@]}" > $media_lib/config/mount_paths.txt
 	docker inspect $EMBY_NAME | grep Destination | grep -vE "/config|/media|/etc/nsswitch.conf" | awk -F\" '{print $4}' > $media_lib/config/mount_paths.txt
