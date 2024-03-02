@@ -52,7 +52,7 @@ function11() {
 		bash -c "$(curl https://xy.ggbond.org/xy/resilio_ailg.sh)" \
 		-s $media_dir $mem_size
 	elif [[ $f11_choose == 2 ]]; then
-		read -ep "请输入您要同步的resilio容器名（名字是默认的resilio请直接回车）" resilio_name
+		#read -ep "请输入您要同步的resilio容器名（名字是默认的resilio请直接回车）" resilio_name
         echo -e "\n"
         echo -e "\033[1;31m同步进行中，需要较长时间，请耐心等待，直到出命令行提示符才算结束！\033[0m"
 		bash -c "$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)" -s $media_dir $config_dir $emby_name $resilio_name | tee $media_dir/temp/cron.log
