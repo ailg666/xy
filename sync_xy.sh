@@ -46,6 +46,7 @@ function11() {
 	get_config_path
 	read -ep "请输入您要同步的emby容器名（名字是默认的emby请直接回车）" emby_name
     #检查用户输入
+    [[ -z $emby_name ]] && emby_name="emby"
     if [[ $(docker ps -a | grep $emby_name) ]];then
         [[ -z $(docker ps | grep $emby_name) ]] && docker restart $emby_name
     else
