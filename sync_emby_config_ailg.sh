@@ -47,6 +47,8 @@ if [ ! -d $media_lib/config_sync ]; then
 	mkdir $media_lib/config_sync
 fi
 
+emby_version=$(docker inspect emby | grep -E Image | grep -v sha256 | awk -F\" '{ print $4 }' | cut -d: -f2)
+
 #local_sha=$(docker inspect --format='{{index .RepoDigests 0}}' ailg/ggbond:latest  |cut -f2 -d:)
 #remote_sha=$(curl -s "https://hub.docker.com/v2/repositories/ailg/ggbond/tags/latest"|grep -o '"digest":"[^"]*' | grep -o '[^"]*$' |tail -n1 |cut -f2 -d:)
 #if [ ! "$local_sha" == "$remote_sha" ]; then
@@ -152,14 +154,14 @@ if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" |grep Chap
 	${SQLITE_COMMAND_2} sqlite3 /emby/config/data/library.db ".read /tmp/emby_user.sql"
 	${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db "DROP TABLE IF EXISTS ItemExtradata;"
 	${SQLITE_COMMAND_2} sqlite3 /emby/config/data/library.db ".read /tmp/emby_library_mediaconfig.sql"	
-	
+	[[ $emby_version == "4.8.0.56" ]] && ${SQLITE_COMMAND} bash -c "sqlite3 /emby/config/data/library.db < /emby/config/media_items_all.sql"
 	echo "$data 保存用户信息完成"
 	mkdir -p $media_lib/config/cache
 	mkdir -p $media_lib/config/metadata
 	cp -rf $media_lib/temp/config/cache/* $media_lib/config/cache/
 	cp -rf $media_lib/temp/config/metadata/* $media_lib/config/metadata/
-    #rm -f $media_lib/config/*.sql
-    #rm -f $media_lib/config/mount_paths.txt
+    rm -f $media_lib/config/*.sql
+    rm -f $media_lib/config/mount_paths.txt
 	rm -rf $media_lib/temp/config/*
 	echo "$data 复制 config_sync 至 config 完成"
 	
@@ -177,14 +179,16 @@ else
 	docker start ${EMBY_NAME}
 	exit
 fi
-
 check_start
 
-docker stop ${EMBY_NAME}
-sleep 10
-docker run -it --rm --security-opt seccomp=unconfined --net=host -v $media_lib:/test -e LANG=C.UTF-8  ailg/ggbond:latest /bin/bash -c "sqlite3 /test/config/data/library.db < /test/config/media_items_all.sql"
+if [[ ! $emby_version == 4.8.0.56 ]];then   
+    docker stop ${EMBY_NAME}
+    sleep 10
+    ${SQLITE_COMMAND} bash -c "sqlite3 /emby/config/data/library.db < /emby/config/media_items_all.sql"
+    docker start ${EMBY_NAME}
+    check_start
+fi
 
-check_start
 EMBY_COMMAND="docker run -i --security-opt seccomp=unconfined --rm --net=host -v /tmp/emby.response:/tmp/emby.response -e LANG=C.UTF-8 ailg/ggbond:latest"
 USER_COUNT=$(${EMBY_COMMAND} jq '.[].Name' /tmp/emby.response |wc -l)
 for(( i=0 ; i <$USER_COUNT ; i++ ))
