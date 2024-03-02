@@ -38,11 +38,10 @@ if command -v crontab >/dev/null 2>&1; then
 	crontab /tmp/cronjob.tmp
     echo -e "\n"
     echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
-	INFO "已经添加下面的记录到crontab定时任务，每$4天更新一次config"
-    echo -e "\n"
-    echo -e "\033[1;37m"
+    echo -e "\n"	
+    INFO "已经添加下面的记录到crontab定时任务，每$4天更新一次config"
+    echo -e "\033[1;34m"
 	echo "$(cat /tmp/cronjob.tmp| grep sync_emby_config )"
-	echo -e "\n"
     echo -e "\033[0m"
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
 elif [[ $6 == syno ]];then
@@ -53,11 +52,10 @@ elif [[ $6 == syno ]];then
 	echo "$minu $hour */$4 * * root bash -c \"\$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)\" -s $1 $2 $5 > $1/temp/cron.log" >> /etc/crontab
     echo -e "\n"
     echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
-	INFO "已经添加下面的记录到crontab定时任务，每$4天更新一次config"
-    echo -e "\n"
-    echo -e "\033[1;37m"
+    echo -e "\n"	
+    INFO "已经添加下面的记录到crontab定时任务，每$4天更新一次config"
+    echo -e "\033[1;34m"
 	echo "$(cat /tmp/cronjob.tmp| grep sync_emby_config )"
-	echo -e "\n"
     echo -e "\033[0m"
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
 fi
