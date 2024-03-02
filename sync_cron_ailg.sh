@@ -1,7 +1,27 @@
 #!/bin/bash
+Blue="\033[1;34m"
+Green="\033[1;32m"
+Red="\033[1;31m"
+Yellow='\033[1;33m'
+Font="\033[0m"
+INFO="[${Green}INFO${Font}]"
+ERROR="[${Red}ERROR${Font}]"
+WARN="[${Yellow}WARN${Font}]"
+
+function INFO() {
+    echo -e "${INFO} ${1}"
+}
+function ERROR() {
+    echo -e "${ERROR} ${1}"
+}
+function WARN() {
+    echo -e "${WARN} ${1}"
+}
+
 time_value=${3//：/:}
 hour=${time_value%%:*}
 minu=${time_value#*:}
+
 
 if ! [[ "$hour" =~ ^([01]?[0-9]|2[0-3])$ ]] || ! [[ "$minu" =~ ^([0-5]?[0-9])$ ]]; then
   echo "输入错误，请重新输入。小时必须为0-23的正整数，分钟必须为0-59的正整数。"
@@ -18,7 +38,7 @@ if command -v crontab >/dev/null 2>&1; then
 	crontab /tmp/cronjob.tmp
 
 	INFO "已经添加下面的记录到crontab定时任务，每$4天更新一次config"
-    echo -e "\033[35m"
+    echo -e "\033[1;33m"
 	echo "$(cat /tmp/cronjob.tmp| grep sync_emby_config )"
 	echo -e "\033[0m"
 elif [[ $6 == syno ]];then
@@ -28,7 +48,7 @@ elif [[ $6 == syno ]];then
 	sed -i '/sync_emby_config/d' /etc/crontab
 	echo "$minu $hour */$4 * * root bash -c \"\$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)\" -s $1 $2 $5 > $1/temp/cron.log" >> /etc/crontab
     INFO "已经添加下面的记录到crontab定时任务，每$4天更新一次config"
-    echo -e "\033[35m"
+    echo -e "\033[1;33m"
 	echo "$(cat /tmp/cronjob.tmp| grep sync_emby_config )"
 	echo -e "\033[0m"
 fi
