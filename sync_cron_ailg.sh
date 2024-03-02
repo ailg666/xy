@@ -19,7 +19,7 @@ if command -v crontab >/dev/null 2>&1; then
 
 	echo -e "\033[33m"
 	echo -e "已经添加下面的记录到crontab定时任务，每$4天更新一次config"
-	echo "$(cat /tmp/cronjob.tmp)"
+	echo "$(cat /tmp/cronjob.tmp| grep sync_emby_config )"
 	echo -e "\033[0m"
 elif [[ $6 == syno ]];then
 	cp /etc/crontab /etc/crontab.bak
@@ -27,4 +27,8 @@ elif [[ $6 == syno ]];then
 	
 	sed -i '/sync_emby_config/d' /etc/crontab
 	echo "$minu $hour */$4 * * root bash -c \"\$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)\" -s $1 $2 $5 > $1/temp/cron.log" >> /etc/crontab
+    echo -e "\033[33m"
+	echo -e "已经添加下面的记录到crontab定时任务，每$4天更新一次config"
+	echo "$(cat /etc/cronjob.tmp | grep sync_emby_config )"
+	echo -e "\033[0m"
 fi
