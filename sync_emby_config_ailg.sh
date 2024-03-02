@@ -7,11 +7,11 @@ else
 	EMBY_NAME=emby
 fi
 
-if [ $4 ]; then
-	RESILIO_NAME=$4
-else	
-	RESILIO_NAME=resilio
-fi
+#if [ $4 ]; then
+#	RESILIO_NAME=$4
+#else	
+#	RESILIO_NAME=resilio
+#fi
 
 if [ $2 ]; then
 	EMBY_URL=$(cat $2/emby_server.txt)
