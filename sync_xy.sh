@@ -55,15 +55,19 @@ function11() {
 		read -ep "请输入您要同步的resilio容器名（名字是默认的resilio请直接回车）" resilio_name
         echo -e "\n"
         echo -e "\033[1;31m同步进行中，需要较长时间，请耐心等待，直到出命令行提示符才算结束！\033[0m"
-		bash -c "$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)" -s $media_dir $config_dir $emby_name $resilio_name >> $media_dir/resilio/cron.log
-		WARN "已在同级目录（config/data）为您创建library.db的备份文件library.org.db"
+		bash -c "$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)" -s $media_dir $config_dir $emby_name $resilio_name | tee -a $media_dir/temp/cron.log
+		echo -e "\n"
+        echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
+        INFO "安装完成"
+        WARN "已在原目录（config/data）为您创建library.db的备份文件library.org.db"
+        echo -e "\n"
         WARN "只有emby启动报错，或启动后媒体库丢失才需执行以下操作："
         echo -e "\033[1;35m1、先停止容器，检查emby媒体库目录的config/data目录中是否有library.org.db备份文件！"
         echo -e "2、如果没有，说明备份文件已自动恢复，原数据启动不了需要排查其他问题，或重装config目录！"
         echo -e "3、如果有，继续执行3-5步，先删除library.db/library.db-shm/library.db-wal三个文件！"
 		echo -e "4、将library.org.db改名为library.db，library.db-wal.bak改名为library.db-wal（没有此文件则略过）！"
 		echo -e "5、将library.db-shm.bak改名为library.db-shm（没有此文件则略过），重启emby容器即可恢复原数据！\033[0m"
-
+        echo -e "——————————————————————————————————————————————————————————————————————————————————"
 	elif [[ $f11_choose == 3 ]]; then	
 		echo -e "\033[1;37m请设置您希望resilio每次同步的时间：\033[0m"
 		read -ep "注意：24小时制，格式："hh:mm"，小时分钟之间用英文冒号分隔，示例：23:45）：" sync_time
