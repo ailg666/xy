@@ -137,8 +137,8 @@ if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" |grep Chap
 	mkdir -p $media_lib/config/metadata
 	cp -rf $media_lib/temp/config/cache/* $media_lib/config/cache/
 	cp -rf $media_lib/temp/config/metadata/* $media_lib/config/metadata/
-    rm -f $media_lib/config/*.sql
-    rm -f $media_lib/config/mount_paths.txt
+    #rm -f $media_lib/config/*.sql
+    #rm -f $media_lib/config/mount_paths.txt
 	rm -rf $media_lib/temp/config/*
 	echo "$data 复制 config_sync 至 config 完成"
 	
