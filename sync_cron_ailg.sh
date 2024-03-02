@@ -13,18 +13,18 @@ fi
 #read -ep "**check"
 if command -v crontab >/dev/null 2>&1; then
 	crontab -l |grep -v sync_emby_config > /tmp/cronjob.tmp
-	#echo '$minu $hour */$4 * * bash -c "$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)" -s' " $1 $2 $5 $6 > $1/resilio/cron.log" >> /tmp/cronjob.tmp
-	echo "$minu $hour */$4 * * bash -c \"\$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)\" -s $1 $2 $5 $6 > $1/temp/cron.log" >> /tmp/cronjob.tmp
+	#echo '$minu $hour */$4 * * bash -c "$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)" -s' " $1 $2 $5 > $1/resilio/cron.log" >> /tmp/cronjob.tmp
+	echo "$minu $hour */$4 * * bash -c \"\$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)\" -s $1 $2 $5 > $1/temp/cron.log" >> /tmp/cronjob.tmp
 	crontab /tmp/cronjob.tmp
 
 	echo -e "\033[33m"
 	echo -e "已经添加下面的记录到crontab定时任务，每$4天更新一次config"
 	echo "$(cat /tmp/cronjob.tmp)"
 	echo -e "\033[0m"
-elif [[ $7 == syno ]];then
+elif [[ $6 == syno ]];then
 	cp /etc/crontab /etc/crontab.bak
 	echo -e "\033[1;35m已创建/etc/crontab.bak备份文件！\033[0m"
 	
 	sed -i '/sync_emby_config/d' /etc/crontab
-	echo "$minu $hour */$4 * * root bash -c \"\$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)\" -s $1 $2 $5 $6 > $1/temp/cron.log" >> /etc/crontab
+	echo "$minu $hour */$4 * * root bash -c \"\$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)\" -s $1 $2 $5 > $1/temp/cron.log" >> /etc/crontab
 fi
