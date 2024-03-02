@@ -82,12 +82,12 @@ function11() {
 		read -ep "注意：24小时制，格式："hh:mm"，小时分钟之间用英文冒号分隔，示例：23:45）：" sync_time
 		read -ep "您希望resilio几天同步一次？（单位：天）" sync_day
 		#read -ep "请输入您要同步的emby容器名（名字是默认的emby请直接回车）：" emby_name
-		read -ep "请输入您要同步的resilio容器名（名字是默认的resilio请直接回车）：" resilio_name
+		#read -ep "请输入您要同步的resilio容器名（名字是默认的resilio请直接回车）：" resilio_name
 		#read -ep "宿主机为群晖请输入syno，否则直接回车：" is_syno
         [[ -f /etc/synoinfo.conf ]] && is_syno="syno"
         [[ -z $emby_name ]] && emby_name="emby"
-		[[ -z $resilio_name ]] && resilio_name="resilio"
-		bash -c "$(curl https://xy.ggbond.org/xy/sync_cron_ailg.sh)" -s $media_dir $config_dir $sync_time $sync_day $emby_name $resilio_name $is_syno
+		#[[ -z $resilio_name ]] && resilio_name="resilio"
+		bash -c "$(curl https://xy.ggbond.org/xy/sync_cron_ailg.sh)" -s $media_dir $config_dir $sync_time $sync_day $emby_name $is_syno
 	fi
 }
 
