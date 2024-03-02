@@ -1,6 +1,27 @@
 #!/bin/bash
 data=$(date +"%Y-%m-%d %H:%M:%S")
 
+function check_start(){
+SINCE_TIME=$(date +"%Y-%m-%dT%H:%M:%S")
+start_time=$(date +%s)
+CONTAINER_NAME=${EMBY_NAME}
+TARGET_LOG_LINE_SUCCESS="All entry points have started"
+while true; do
+	line=$(docker logs "$CONTAINER_NAME" 2>&1| tail -n 10)
+	echo $line
+	if [[ "$line" == *"$TARGET_LOG_LINE_SUCCESS"* ]]; then
+        break
+	fi
+	current_time=$(date +%s)
+	elapsed_time=$((current_time - start_time))
+	if (( elapsed_time >= 300 )); then
+		echo "程序执行超时 5分钟，终止执行更新用户Policy"
+		exit
+	fi	
+	sleep 3
+done
+}
+
 if [ $3 ]; then
 	EMBY_NAME=$3
 else	
@@ -52,12 +73,12 @@ if [[ $(docker ps -a | grep -E "(^|\s)$EMBY_NAME(\s|$)") ]];then
 	#echo $mount_paths
 	#printf "%s\n" "${mount_paths[@]}" > $media_lib/config/mount_paths.txt
 	docker inspect $EMBY_NAME | grep Destination | grep -vE "/config|/media|/etc/nsswitch.conf" | awk -F\" '{print $4}' > $media_lib/config/mount_paths.txt
-else
-	echo "您的输入有误，没有找到名字为$EMBY_NAME的容器！程序退出！"
-	exit 1
+#else
+#	echo "您的输入有误，没有找到名字为$EMBY_NAME的容器！程序退出！"
+#	exit 1
 fi
 curl -s "${EMBY_URL}/Users?api_key=e825ed6f7f8f44ffa0563cddaddce14d"  > /tmp/emby.response
-echo "$data Emby 和 Resilio关闭中 ...."
+echo "$data Emby 关闭中 ...."
 docker stop ${EMBY_NAME}
 
 sleep 4
@@ -131,7 +152,7 @@ if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" |grep Chap
 	${SQLITE_COMMAND_2} sqlite3 /emby/config/data/library.db ".read /tmp/emby_user.sql"
 	${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db "DROP TABLE IF EXISTS ItemExtradata;"
 	${SQLITE_COMMAND_2} sqlite3 /emby/config/data/library.db ".read /tmp/emby_library_mediaconfig.sql"	
-	docker run -it --rm --security-opt seccomp=unconfined --net=host -v $media_lib:/test -e LANG=C.UTF-8  ailg/ggbond:latest /bin/bash -c "sqlite3 /test/config/data/library.db < /test/config/media_items_all.sql"
+	
 	echo "$data 保存用户信息完成"
 	mkdir -p $media_lib/config/cache
 	mkdir -p $media_lib/config/metadata
@@ -157,25 +178,13 @@ else
 	exit
 fi
 
-SINCE_TIME=$(date +"%Y-%m-%dT%H:%M:%S")
-start_time=$(date +%s)
-CONTAINER_NAME=${EMBY_NAME}
-TARGET_LOG_LINE_SUCCESS="All entry points have started"
-while true; do
-	line=$(docker logs "$CONTAINER_NAME" 2>&1| tail -n 10)
-	echo $line
-	if [[ "$line" == *"$TARGET_LOG_LINE_SUCCESS"* ]]; then
-        break
-	fi
-	current_time=$(date +%s)
-	elapsed_time=$((current_time - start_time))
-	if (( elapsed_time >= 300 )); then
-		echo "程序执行超时 5分钟，终止执行更新用户Policy"
-		exit
-	fi	
-	sleep 3
-done
+check_start
 
+docker stop ${EMBY_NAME}
+sleep 10
+docker run -it --rm --security-opt seccomp=unconfined --net=host -v $media_lib:/test -e LANG=C.UTF-8  ailg/ggbond:latest /bin/bash -c "sqlite3 /test/config/data/library.db < /test/config/media_items_all.sql"
+
+check_start
 EMBY_COMMAND="docker run -i --security-opt seccomp=unconfined --rm --net=host -v /tmp/emby.response:/tmp/emby.response -e LANG=C.UTF-8 ailg/ggbond:latest"
 USER_COUNT=$(${EMBY_COMMAND} jq '.[].Name' /tmp/emby.response |wc -l)
 for(( i=0 ; i <$USER_COUNT ; i++ ))
