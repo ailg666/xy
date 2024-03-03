@@ -56,8 +56,8 @@ emby_version=$(docker inspect emby | grep -E Image | grep -v sha256 | awk -F\" '
 #    docker pull ailg/ggbond:latest
 #fi
 
-docker rmi ailg/ggbond:latest
-docker pull ailg/ggbond:latest
+#docker rmi ailg/ggbond:latest
+#docker pull ailg/ggbond:latest
 
 docker_exist=$(docker images |grep ailg/ggbond )
 if [ -z "$docker_exist" ]; then
