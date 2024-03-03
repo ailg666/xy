@@ -88,7 +88,7 @@ sleep 4
 #旧数据备份并清除旧数据库
 ${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump UserDatas" > /tmp/emby_user.sql
 ${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump ItemExtradata" > /tmp/emby_library_mediaconfig.sql
-${SQLITE_COMMAND} /emby_userdata.sh
+${SQLITE_COMMAND} bash -c "$(cat /emby/config/sync_ailg2.sh)"
 #read -ep "**检查sql"
 mv  $media_lib/config/data/library.db $media_lib/config/data/library.org.db
 [[ -f $media_lib/config/data/library.db-wal ]] && mv $media_lib/config/data/library.db-wal $media_lib/config/data/library.db-wal.bak
