@@ -56,13 +56,16 @@ emby_version=$(docker inspect emby | grep -E Image | grep -v sha256 | awk -F\" '
 #    docker pull ailg/ggbond:latest
 #fi
 
-docker rmi ailg/ggbond:latest
-docker pull ailg/ggbond:latest
+#docker rmi ailg/ggbond:latest
 
 docker_exist=$(docker images |grep ailg/ggbond )
 if [ -z "$docker_exist" ]; then
-	echo "拉取镜像失败，请检查网络，或者翻墙后再试"
-	exit 1
+    docker pull ailg/ggbond:latest
+    docker_exist=$(docker images |grep ailg/ggbond )
+	if [ -z "$docker_exist" ]; then
+        echo "拉取镜像失败，请检查网络，或者翻墙后再试"
+	    exit 1
+    fi
 fi
 
 SQLITE_COMMAND="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/config:/emby/config -e LANG=C.UTF-8 ailg/ggbond:latest"
@@ -149,6 +152,7 @@ echo -e "下载解压元数据完成"
 
 echo "$data 检查同步数据库完整性..."
 sleep 4
+read -ep "check sql\&library!"
 if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" |grep Chapters3 > /dev/null ; then
 	
 	echo -e "\033[32m$data 同步数据库数据完整\033[0m"
