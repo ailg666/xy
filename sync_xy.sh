@@ -91,9 +91,9 @@ function11() {
         [[ -f /etc/synoinfo.conf ]] && is_syno="syno"
         [[ -z $emby_name ]] && emby_name="emby"
 		#[[ -z $resilio_name ]] && resilio_name="resilio"
-        curl -o /tmp/sync_cron_ailg.sh https://xy.ggbond.org/xy/sync_cron_ailg.sh)
+        curl -o /tmp/sync_cron_ailg.sh https://xy.ggbond.org/xy/sync_cron_ailg.sh
         grep -q "定时任务" /tmp/sync_cron_ailg.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/sync_cron_ailg.sh; exit 1; }
-		bash -c "$(curl https://xy.ggbond.org/xy/sync_cron_ailg.sh)" -s $media_dir $config_dir $sync_time $sync_day $emby_name $is_syno
+		bash -c "$(cat /tmp/sync_cron_ailg.sh)" -s $media_dir $config_dir $sync_time $sync_day $emby_name $is_syno
 	fi
 }
 
