@@ -58,7 +58,7 @@ function11() {
 	if [[ $f11_choose == 1 ]]; then
 		#获取其他自定义的同步参数
 		read -ep "请设置您的resilio容器内存上限（单位：MB，示例：2048）：" mem_size
-        curl -oSL /tmp/resilio_ailg.sh https://xy.ggbond.org/xy/resilio_ailg.sh
+        curl -o /tmp/resilio_ailg.sh https://xy.ggbond.org/xy/resilio_ailg.sh
         grep -q "resilio" /tmp/resilio_ailg.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/resilio_ailg.sh; exit 1; }
 		bash -c "$(cat /tmp/resilio_ailg.sh)" \
 		-s $media_dir $mem_size
@@ -66,7 +66,7 @@ function11() {
 		#read -ep "请输入您要同步的resilio容器名（名字是默认的resilio请直接回车）" resilio_name
         echo -e "\n"
         echo -e "\033[1;31m同步进行中，需要较长时间，请耐心等待，直到出命令行提示符才算结束！\033[0m"
-        curl -oSL /tmp/sync_emby_config_ailg.sh https://xy.ggbond.org/xy/sync_emby_config_ailg.sh
+        curl -o /tmp/sync_emby_config_ailg.sh https://xy.ggbond.org/xy/sync_emby_config_ailg.sh
         grep -q "返回错误" /tmp/sync_emby_config_ailg.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/sync_emby_config_ailg.sh; exit 1; }
 		bash -c "$(cat /tmp/sync_emby_config_ailg.sh)" -s $media_dir $config_dir $emby_name | tee $media_dir/temp/cron.log
 		echo -e "\n"
@@ -91,6 +91,8 @@ function11() {
         [[ -f /etc/synoinfo.conf ]] && is_syno="syno"
         [[ -z $emby_name ]] && emby_name="emby"
 		#[[ -z $resilio_name ]] && resilio_name="resilio"
+        curl -o /tmp/sync_cron_ailg.sh https://xy.ggbond.org/xy/sync_cron_ailg.sh)
+        grep -q "定时任务" /tmp/sync_cron_ailg.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/sync_cron_ailg.sh; exit 1; }
 		bash -c "$(curl https://xy.ggbond.org/xy/sync_cron_ailg.sh)" -s $media_dir $config_dir $sync_time $sync_day $emby_name $is_syno
 	fi
 }
