@@ -123,6 +123,7 @@ else
 	fi
 fi
 echo -e "连接小雅地址为 ${xiaoya_addr}"
+rm -f $media_lib/temp/config.mp4
 docker run -i \
 	--security-opt seccomp=unconfined \
 	--rm \
