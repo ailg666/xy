@@ -193,7 +193,7 @@ rm -f $media_lib/config/*.sql
 rm -f $media_lib/config/mount_paths.txt
 rm -rf $media_lib/temp/config/*
 
-EMBY_COMMAND="docker run -i --security-opt seccomp=unconfined --rm --net=host -v /tmp/emby.response:/tmp/emby.response -e LANG=C.UTF-8 ailg/ggbond:latest"
+EMBY_COMMAND="docker run -it --security-opt seccomp=unconfined --rm --net=host -v /tmp/emby.response:/tmp/emby.response -e LANG=C.UTF-8 ailg/ggbond:latest"
 USER_COUNT=$(${EMBY_COMMAND} jq '.[].Name' /tmp/emby.response |wc -l)
 for(( i=0 ; i <$USER_COUNT ; i++ ))
 do
@@ -217,6 +217,8 @@ $(echo "$(${EMBY_COMMAND} jq -r ".[$i].Policy | to_entries | from_entries | tojs
 EOF
 	USER_URL_2="${EMBY_URL}/Users/$id/Policy?api_key=e825ed6f7f8f44ffa0563cddaddce14d"
     	status_code=$(curl -s -w "%{http_code}" -H "Content-Type: application/json" -X POST -d "$policy" "$USER_URL_2")
+        echo $status_code
+        read -ep "check status"
     	if [ "$status_code" == "204" ]; then
         	echo "成功更新 $name 用户Policy"
     	else
