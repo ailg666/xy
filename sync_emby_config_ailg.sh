@@ -89,6 +89,8 @@ sleep 4
 ${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump UserDatas" > /tmp/emby_user.sql
 ${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump ItemExtradata" > /tmp/emby_library_mediaconfig.sql
 ${SQLITE_COMMAND} /emby_userdata.sh
+
+
 #read -ep "**检查sql"
 mv  $media_lib/config/data/library.db $media_lib/config/data/library.org.db
 [[ -f $media_lib/config/data/library.db-wal ]] && mv $media_lib/config/data/library.db-wal $media_lib/config/data/library.db-wal.bak
@@ -197,9 +199,18 @@ do
 	if [[ "$USER_COUNT" > 9 ]]; then
 		exit
 	fi
-	read -r id <<< "$(${EMBY_COMMAND} jq -r ".[$i].Id" /tmp/emby.response |tr -d [:space:])"
-	read -r name <<< "$(${EMBY_COMMAND} jq -r ".[$i].Name" /tmp/emby.response |tr -d [:space:])"
-	read -r policy <<< "$(${EMBY_COMMAND} jq -r ".[$i].Policy | to_entries | from_entries | tojson" /tmp/emby.response |tr -d [:space:])"
+	#read -r id <<< "$(${EMBY_COMMAND} jq -r ".[$i].Id" /tmp/emby.response |tr -d [:space:])"
+    read -r id <<EOF
+$(echo "$(${EMBY_COMMAND} jq -r ".[$i].Id" /tmp/emby.response | tr -d [:space:])")
+EOF
+	#read -r name <<< "$(${EMBY_COMMAND} jq -r ".[$i].Name" /tmp/emby.response |tr -d [:space:])"
+	read -r name <<EOF
+$(echo "$(${EMBY_COMMAND} jq -r ".[$i].Name" /tmp/emby.response | tr -d [:space:])")
+EOF
+	#read -r policy <<< "$(${EMBY_COMMAND} jq -r ".[$i].Policy | to_entries | from_entries | tojson" /tmp/emby.response |tr -d [:space:])"
+	read -r policy <<EOF
+$(echo "$(${EMBY_COMMAND} jq -r ".[$i].Policy | to_entries | from_entries | tojson" /tmp/emby.response |tr -d [:space:])")
+EOF
 	USER_URL_2="${EMBY_URL}/Users/$id/Policy?api_key=e825ed6f7f8f44ffa0563cddaddce14d"
     	status_code=$(curl -s -w "%{http_code}" -H "Content-Type: application/json" -X POST -d "$policy" "$USER_URL_2")
     	if [ "$status_code" == "204" ]; then
