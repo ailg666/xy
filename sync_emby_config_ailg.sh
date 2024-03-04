@@ -199,10 +199,13 @@ do
 	if [[ "$USER_COUNT" > 9 ]]; then
 		exit
 	fi
-	#read -r id <<< "$(${EMBY_COMMAND} jq -r ".[$i].Id" /tmp/emby.response |tr -d [:space:])"
+	#<<<在绿联中不支持，改用下面的写法通用性可能更好。
+    #read -r id <<< "$(${EMBY_COMMAND} jq -r ".[$i].Id" /tmp/emby.response |tr -d [:space:])"
     read -r id <<EOF
 $(echo "$(${EMBY_COMMAND} jq -r ".[$i].Id" /tmp/emby.response | tr -d [:space:])")
 EOF
+    #下面这个命令将id替换成jellyfin惯用的形式，不知道是否某些版本的emby要求这种格式的id来请求更新策略，留着备用。
+    #id=$(echo $id | sed 's/\(........\)\(....\)\(....\)\(....\)\(............\)/\1-\2-\3-\4-\5/')
 	#read -r name <<< "$(${EMBY_COMMAND} jq -r ".[$i].Name" /tmp/emby.response |tr -d [:space:])"
 	read -r name <<EOF
 $(echo "$(${EMBY_COMMAND} jq -r ".[$i].Name" /tmp/emby.response | tr -d [:space:])")
