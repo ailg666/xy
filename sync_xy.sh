@@ -23,7 +23,6 @@ function WARN() {
 }
 
 function11() {
-    unset f11_choose
 	clear
     echo -e "\e[33m"
 	echo -e "—————————————————————————————————使  用  说  明———————————————————————————————————"
@@ -45,12 +44,15 @@ function11() {
 	echo -e "\033[1;35m4、取消同步计划\033[0m"
     echo -e "\n"
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
-	read -ep "请选择（1-4）：" f11_choose
-	if ! [[ $f11_choose -ge 1 && $f11_choose -le 4 ]]; then
-		echo -e "您的输入有误，按任意键换个姿势再来一次！"
-		read -n 1 s
-		function11
-	elif [[ ! $f11_choose == 4 ]];then
+	while true; do
+        read -p "请选择（1-4）：" f11_choose
+        if [[ $f11_choose =~ ^[1-4]$ ]]; then
+            break
+        else
+            echo -e "您的输入有误，请输入 1 到 4 之间的数字。"
+        fi
+    done
+	if [[ ! $f11_choose == 4 ]];then
 		get_config_path
 		read -ep "请输入您要同步的emby容器名（名字是默认的emby请直接回车）" emby_name
 		#检查用户输入
@@ -64,8 +66,7 @@ function11() {
 		fi
 		get_emby_media_path $emby_name
 	fi
-	echo -e "f11_choose is $f11_choose"
-	read -ep "check"
+
 	if [[ $f11_choose == 1 ]]; then
 		#获取其他自定义的同步参数
 		read -ep "请设置您的resilio容器内存上限（单位：MB，示例：2048）：" mem_size
