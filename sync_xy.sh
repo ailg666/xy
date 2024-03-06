@@ -47,6 +47,7 @@ function11() {
 	read -ep "请选择（1-4）：" f11_choose
 	if ! [[ $f11_choose -ge 1 && $f11_choose -le 4 ]]; then
 		echo -e "您的输入有误，按任意键换个姿势再来一次！"
+		unset f11_choose
 		read -n 1 s
 		function11
 	elif [[ ! $f11_choose == 4 ]];then
