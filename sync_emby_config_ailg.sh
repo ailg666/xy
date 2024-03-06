@@ -28,12 +28,6 @@ else
 	EMBY_NAME=emby
 fi
 
-#if [ $4 ]; then
-#	RESILIO_NAME=$4
-#else	
-#	RESILIO_NAME=resilio
-#fi
-
 if [ $2 ]; then
 	EMBY_URL=$(cat $2/emby_server.txt)
 	xiaoya_config_dir=$2
@@ -78,9 +72,6 @@ if [[ $(docker ps -a | grep -E "(^|\s)$EMBY_NAME(\s|$)") ]];then
 	#echo $mount_paths
 	#printf "%s\n" "${mount_paths[@]}" > $media_lib/config/mount_paths.txt
 	docker inspect $EMBY_NAME | grep Destination | grep -vE "/config|/media|/etc/nsswitch.conf" | awk -F\" '{print $4}' > $media_lib/config/mount_paths.txt
-#else
-#	echo "您的输入有误，没有找到名字为$EMBY_NAME的容器！程序退出！"
-#	exit 1
 fi
 curl -s "${EMBY_URL}/Users?api_key=e825ed6f7f8f44ffa0563cddaddce14d"  > /tmp/emby.response
 echo "$data Emby 关闭中 ...."
@@ -152,7 +143,7 @@ echo -e "下载解压元数据完成"
 
 echo "$data 检查同步数据库完整性..."
 sleep 4
-read -ep "check sql\&library!"
+#read -ep "check sql\&library!"
 if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" |grep Chapters3 > /dev/null ; then
 	
 	echo -e "\033[32m$data 同步数据库数据完整\033[0m"
@@ -183,6 +174,7 @@ else
 	docker start ${EMBY_NAME}
 	exit
 fi
+
 check_start
 
 if [[ ! $emby_version == 4.8.0.56 ]];then   
@@ -199,6 +191,9 @@ rm -rf $media_lib/temp/config/*
 
 EMBY_COMMAND="docker run -it --security-opt seccomp=unconfined --rm --net=host -v /tmp/emby.response:/tmp/emby.response -e LANG=C.UTF-8 ailg/ggbond:latest"
 USER_COUNT=$(${EMBY_COMMAND} jq '.[].Name' /tmp/emby.response |wc -l)
+echo -e "user_count = $USER_COUNT"
+read -ep "check user_count"
+
 for(( i=0 ; i <$USER_COUNT ; i++ ))
 do
 	if [[ "$USER_COUNT" > 9 ]]; then
