@@ -41,8 +41,10 @@ function11() {
     echo -e "\n"
     echo -e "\033[1;35m3、设置同步计划\033[0m"
     echo -e "\n"
+	echo -e "\033[1;35m4、取消同步计划\033[0m"
+    echo -e "\n"
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
-	read -ep "请选择（1或2或3）：" f11_choose
+	read -ep "请选择（1-4）：" f11_choose
 	get_config_path
 	read -ep "请输入您要同步的emby容器名（名字是默认的emby请直接回车）" emby_name
     #检查用户输入
@@ -96,6 +98,14 @@ function11() {
         curl -o /tmp/sync_cron_ailg.sh https://xy.ggbond.org/xy/sync_cron_ailg.sh
         grep -q "定时任务" /tmp/sync_cron_ailg.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/sync_cron_ailg.sh; exit 1; }
 		bash -c "$(cat /tmp/sync_cron_ailg.sh)" -s $media_dir $config_dir $sync_time $sync_day $emby_name $is_syno
+	elif [[ $f11_choose == 4 ]]; then
+		if [[ -f /etc/synoinfo.conf ]];then
+			sed -i '/sync_emby_config/d' /etc/crontab
+		elif command -v crontab >/dev/null 2>&1; then
+			crontab -l |grep -v sync_emby_config > /tmp/cronjob.tmp && crontab /tmp/cronjob.tmp
+		else
+			echo -e "未在你的系统找到同步计划任务！"
+			exit 1
 	fi
 }
 
