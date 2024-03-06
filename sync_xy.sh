@@ -45,7 +45,11 @@ function11() {
     echo -e "\n"
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
 	read -ep "请选择（1-4）：" f11_choose
-	if [[ ! $f11_choose == 4 ]];then
+	if ! [[ $f11_choose -ge 1 && $f11_choose -le 4 ]]; then
+		echo -e "您的输入有误，按任意键换个姿势再来一次！"
+		read -n 1 s
+		function11
+	elif [[ ! $f11_choose == 4 ]];then
 		get_config_path
 		read -ep "请输入您要同步的emby容器名（名字是默认的emby请直接回车）" emby_name
 		#检查用户输入
