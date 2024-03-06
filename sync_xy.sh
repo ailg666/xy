@@ -64,6 +64,8 @@ function11() {
 		fi
 		get_emby_media_path $emby_name
 	fi
+	echo -e "f11_choose is $f11_choose"
+	read -ep "check"
 	if [[ $f11_choose == 1 ]]; then
 		#获取其他自定义的同步参数
 		read -ep "请设置您的resilio容器内存上限（单位：MB，示例：2048）：" mem_size
