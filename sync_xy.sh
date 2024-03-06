@@ -45,18 +45,20 @@ function11() {
     echo -e "\n"
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
 	read -ep "请选择（1-4）：" f11_choose
-	get_config_path
-	read -ep "请输入您要同步的emby容器名（名字是默认的emby请直接回车）" emby_name
-    #检查用户输入
-    [[ -z $emby_name ]] && emby_name="emby"
-    if [[ $(docker ps -a | grep $emby_name) ]];then
-        [[ -z $(docker ps | grep $emby_name) ]] && docker restart $emby_name
-    else
-        ERROR "您输入的容器名不正确，按任意键换个姿势再来一次！"
-        read -n 1 s
-        function11
-    fi
-	get_emby_media_path $emby_name
+	if [[ ! $f11_choose == 4 ]];then
+		get_config_path
+		read -ep "请输入您要同步的emby容器名（名字是默认的emby请直接回车）" emby_name
+		#检查用户输入
+		[[ -z $emby_name ]] && emby_name="emby"
+		if [[ $(docker ps -a | grep $emby_name) ]];then
+			[[ -z $(docker ps | grep $emby_name) ]] && docker restart $emby_name
+		else
+			ERROR "您输入的容器名不正确，按任意键换个姿势再来一次！"
+			read -n 1 s
+			function11
+		fi
+		get_emby_media_path $emby_name
+	fi
 	if [[ $f11_choose == 1 ]]; then
 		#获取其他自定义的同步参数
 		read -ep "请设置您的resilio容器内存上限（单位：MB，示例：2048）：" mem_size
@@ -105,6 +107,7 @@ function11() {
 			echo -e "未在你的系统找到同步计划任务！"
 			exit 1
 		fi
+	echo -e "已为您取消同步计划！"
 	fi
 }
 
