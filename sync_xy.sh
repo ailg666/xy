@@ -91,8 +91,6 @@ function11() {
 		#read -ep "请输入您要同步的resilio容器名（名字是默认的resilio请直接回车）：" resilio_name
 		#read -ep "宿主机为群晖请输入syno，否则直接回车：" is_syno
         [[ -f /etc/synoinfo.conf ]] && is_syno="syno"
-		echo -e "is_syno = $is_syno"
-		read -ep "check is_syno"
         [[ -z $emby_name ]] && emby_name="emby"
 		#[[ -z $resilio_name ]] && resilio_name="resilio"
         curl -o /tmp/sync_cron_ailg.sh https://xy.ggbond.org/xy/sync_cron_ailg.sh

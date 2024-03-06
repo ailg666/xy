@@ -44,7 +44,7 @@ if command -v crontab >/dev/null 2>&1; then
     echo -e "\033[1;35m"
 	echo "$(cat /tmp/cronjob.tmp| grep sync_emby_config )"
     echo -e "\033[0m"
-	INFO "您可以在$1/temp/cron.log中查看同步执行日志！"
+	INFO "您可以在 > $1/temp/cron.log < 中查看同步执行日志！"
 	echo -e "\n"
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
 elif [[ $6 == syno ]];then
@@ -61,7 +61,7 @@ elif [[ $6 == syno ]];then
     echo -e "\033[1;35m"
 	echo "$(cat /etc/crontab | grep sync_emby_config )"
     echo -e "\033[0m"
-	INFO "您可以在$1/temp/cron.log中查看同步执行日志！"
+	INFO "您可以在 > $1/temp/cron.log < 中查看同步执行日志！"
 	echo -e "\n"
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
 fi
