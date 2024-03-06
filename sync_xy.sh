@@ -106,6 +106,7 @@ function11() {
 		else
 			echo -e "未在你的系统找到同步计划任务！"
 			exit 1
+		fi
 	fi
 }
 
