@@ -58,7 +58,7 @@ function11() {
 		#检查用户输入
 		[[ -z $emby_name ]] && emby_name="emby"
 		if [[ $(docker ps -a | grep $emby_name) ]];then
-			[[ -z $(docker ps | grep $emby_name) ]] && docker restart $emby_name
+			[[ -n $(docker ps | grep $emby_name) ]] && { docker restart $emby_name && sleep 10; }
 		else
 			ERROR "您输入的容器名不正确，按任意键换个姿势再来一次！"
 			read -n 1 s
@@ -70,7 +70,7 @@ function11() {
 	if [[ $f11_choose == 1 ]]; then
 		#获取其他自定义的同步参数
 		read -ep "请设置您的resilio容器内存上限（单位：MB，示例：2048）：" mem_size
-        curl -o /tmp/resilio_ailg.sh https://xy.ggbond.org/xy/resilio_ailg.sh
+        curl -os /tmp/resilio_ailg.sh https://xy.ggbond.org/xy/resilio_ailg.sh
         grep -q "resilio" /tmp/resilio_ailg.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/resilio_ailg.sh; exit 1; }
 		bash -c "$(cat /tmp/resilio_ailg.sh)" \
 		-s $media_dir $mem_size
@@ -78,7 +78,7 @@ function11() {
 		#read -ep "请输入您要同步的resilio容器名（名字是默认的resilio请直接回车）" resilio_name
         echo -e "\n"
         echo -e "\033[1;31m同步进行中，需要较长时间，请耐心等待，直到出命令行提示符才算结束！\033[0m"
-        curl -o /tmp/sync_emby_config_ailg.sh https://xy.ggbond.org/xy/sync_emby_config_ailg.sh
+        curl -os /tmp/sync_emby_config_ailg.sh https://xy.ggbond.org/xy/sync_emby_config_ailg.sh
         grep -q "返回错误" /tmp/sync_emby_config_ailg.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/sync_emby_config_ailg.sh; exit 1; }
 		bash -c "$(cat /tmp/sync_emby_config_ailg.sh)" -s $media_dir $config_dir $emby_name | tee $media_dir/temp/cron.log
 		echo -e "\n"
@@ -103,7 +103,7 @@ function11() {
         [[ -f /etc/synoinfo.conf ]] && is_syno="syno"
         [[ -z $emby_name ]] && emby_name="emby"
 		#[[ -z $resilio_name ]] && resilio_name="resilio"
-        curl -o /tmp/sync_cron_ailg.sh https://xy.ggbond.org/xy/sync_cron_ailg.sh
+        curl -os /tmp/sync_cron_ailg.sh https://xy.ggbond.org/xy/sync_cron_ailg.sh
         grep -q "定时任务" /tmp/sync_cron_ailg.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/sync_cron_ailg.sh; exit 1; }
 		bash -c "$(cat /tmp/sync_cron_ailg.sh)" -s $media_dir $config_dir $sync_time $sync_day $emby_name $is_syno
 	elif [[ $f11_choose == 4 ]]; then
@@ -185,11 +185,14 @@ function get_config_path(){
         if [[ -d "$config_dir" && -f "$config_dir/mytoken.txt" ]]; then
             echo -e "\033[1;37m您选择的小雅ALIST配置文件路径是: \033[1;35m$config_dir\033[0m"
             echo -e "\n"
-            read -ep "确认就按Y/y：" f12_select_1
-            if ! [[ $f12_select_1 == [Yy] ]]; then
-				echo "选择错误，程序将退出。"
-            	exit 1
-            fi
+            while true; do
+				read -ep "确认就按Y/y：" f12_select_1
+				if ! [[ $f12_select_1 == [Yy] ]]; then
+					echo "选择错误，请按Y或y确认，或按CTRL+C退出程序。。"
+				else
+					break
+				fi
+			done
         else
             echo "该路径不存在或该路径下没有mytoken.txt配置文件"
             echo -e "\n"
