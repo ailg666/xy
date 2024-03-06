@@ -58,7 +58,7 @@ function11() {
 		#检查用户输入
 		[[ -z $emby_name ]] && emby_name="emby"
 		if [[ $(docker ps -a | grep $emby_name) ]];then
-			[[ -n $(docker ps | grep $emby_name) ]] && { docker restart $emby_name && sleep 10; }
+			[[ -z $(docker ps | grep $emby_name) ]] && { docker restart $emby_name && sleep 10; }
 		else
 			ERROR "您输入的容器名不正确，按任意键换个姿势再来一次！"
 			read -n 1 s
