@@ -57,7 +57,7 @@ elif [[ $6 == syno ]];then
     echo -e "\n"	
     INFO "已经添加下面的记录到crontab定时任务，每$4天更新一次config"
     echo -e "\033[1;34m"
-	echo "$(cat /tmp/cronjob.tmp| grep sync_emby_config )"
+	echo "$(cat /etc/crontab | grep sync_emby_config )"
     echo -e "\033[0m"
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
 fi
