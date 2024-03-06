@@ -107,7 +107,7 @@ function11() {
 			echo -e "未在你的系统找到同步计划任务！"
 			exit 1
 		fi
-	echo -e "已为您取消同步计划！"
+	INFO "已为您取消同步计划！"
 	fi
 }
 
