@@ -36,6 +36,7 @@ if command -v crontab >/dev/null 2>&1; then
 	#echo '$minu $hour */$4 * * bash -c "$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)" -s' " $1 $2 $5 > $1/resilio/cron.log" >> /tmp/cronjob.tmp
 	echo "$minu $hour */$4 * * /bin/bash -c \"\$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)\" -s $1 $2 $5 | tee $1/temp/cron.log" >> /tmp/cronjob.tmp
 	crontab /tmp/cronjob.tmp
+	chmod 777 $1/temp/cron.log
     echo -e "\n"
     echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
     echo -e "\n"	
@@ -50,6 +51,7 @@ elif [[ $6 == syno ]];then
 	
 	sed -i '/sync_emby_config/d' /etc/crontab
 	echo "$minu $hour */$4 * * root /bin/bash -c \"\$(curl https://xy.ggbond.org/xy/sync_emby_config_ailg.sh)\" -s $1 $2 $5 | tee $1/temp/cron.log" >> /etc/crontab
+	chmod 777 $1/temp/cron.log
     echo -e "\n"
     echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
     echo -e "\n"	
