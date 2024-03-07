@@ -191,8 +191,8 @@ rm -rf $media_lib/temp/config/*
 
 EMBY_COMMAND="docker run -it --security-opt seccomp=unconfined --rm --net=host -v /tmp/emby.response:/tmp/emby.response -e LANG=C.UTF-8 ailg/ggbond:latest"
 USER_COUNT=$(${EMBY_COMMAND} jq '.[].Name' /tmp/emby.response |wc -l)
-echo -e "user_count = $USER_COUNT"
-read -ep "check user_count"
+#echo -e "user_count = $USER_COUNT"
+#read -ep "check user_count"
 
 for(( i=0 ; i <$USER_COUNT ; i++ ))
 do
