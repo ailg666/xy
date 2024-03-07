@@ -85,7 +85,7 @@ ${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump ItemExtradata" > /
 ${SQLITE_COMMAND} /emby_userdata.sh
 
 
-#read -ep "**检查sql"
+read -ep "**检查sql"
 mv  $media_lib/config/data/library.db $media_lib/config/data/library.org.db
 [[ -f $media_lib/config/data/library.db-wal ]] && mv $media_lib/config/data/library.db-wal $media_lib/config/data/library.db-wal.bak
 [[ -f $media_lib/config/data/library.db-shm ]] && mv $media_lib/config/data/library.db-shm $media_lib/config/data/library.db-shm.bak
