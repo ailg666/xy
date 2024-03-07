@@ -185,9 +185,9 @@ if [[ ! $emby_version == 4.8.0.56 ]];then
     sleep 10
     check_start
 fi
-rm -f $media_lib/config/*.sql
-rm -f $media_lib/config/mount_paths.txt
-rm -rf $media_lib/temp/config/*
+# rm -f $media_lib/config/*.sql
+# rm -f $media_lib/config/mount_paths.txt
+# rm -rf $media_lib/temp/config/*
 
 EMBY_COMMAND="docker run -it --security-opt seccomp=unconfined --rm --net=host -v /tmp/emby.response:/tmp/emby.response -e LANG=C.UTF-8 ailg/ggbond:test"
 USER_COUNT=$(${EMBY_COMMAND} jq '.[].Name' /tmp/emby.response |wc -l)
