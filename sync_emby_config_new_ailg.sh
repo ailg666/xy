@@ -52,15 +52,15 @@ emby_version=$(docker inspect emby | grep -E Image | grep -v sha256 | awk -F\" '
 
 #docker rmi ailg/ggbond:test
 
-docker_exist=$(docker images |grep ailg/ggbond:test )
-if [ -z "$docker_exist" ]; then
-    docker pull ailg/ggbond:test
-    docker_exist=$(docker images |grep ailg/ggbond:test )
-	if [ -z "$docker_exist" ]; then
-        echo "拉取镜像失败，请检查网络，或者翻墙后再试"
-	    exit 1
-    fi
-fi
+# docker_exist=$(docker images |grep ailg/ggbond:test )
+# if [ -z "$docker_exist" ]; then
+    # docker pull ailg/ggbond:test
+    # docker_exist=$(docker images |grep ailg/ggbond:test )
+	# if [ -z "$docker_exist" ]; then
+        # echo "拉取镜像失败，请检查网络，或者翻墙后再试"
+	    # exit 1
+    # fi
+# fi
 
 SQLITE_COMMAND="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/config:/emby/config -e LANG=C.UTF-8 ailg/ggbond:test"
 SQLITE_COMMAND_2="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/config/data:/emby/config/data -v /tmp/emby_user.sql:/tmp/emby_user.sql  -v /tmp/emby_library_mediaconfig.sql:/tmp/emby_library_mediaconfig.sql -e LANG=C.UTF-8 ailg/ggbond:test"
