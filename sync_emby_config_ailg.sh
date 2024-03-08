@@ -216,8 +216,8 @@ $(echo "$(${EMBY_COMMAND} jq -r ".[$i].Policy | to_entries | from_entries | tojs
 EOF
 	USER_URL_2="${EMBY_URL}/Users/$id/Policy?api_key=e825ed6f7f8f44ffa0563cddaddce14d"
     	status_code=$(curl -s -w "%{http_code}" -H "Content-Type: application/json" -X POST -d "$policy" "$USER_URL_2")
-        echo $status_code
-        read -ep "check status"
+        # echo $status_code
+        # read -ep "check status"
     	if [ "$status_code" == "204" ]; then
         	echo "成功更新 $name 用户Policy"
     	else
