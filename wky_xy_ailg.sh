@@ -50,7 +50,7 @@ else
 fi
 
 if curl -siL http://127.0.0.1:5678/d/README.md | grep -v 302 | grep "x-oss-"; then
-	echo "http://127.0.0.1:6908 > $config_dir/emby_server.txt
+	echo "http://127.0.0.1:6908" > $config_dir/emby_server.txt
 elif curl -siL http://${docker0}:5678/d/README.md | grep -v 302 | grep "x-oss-"; then
 	echo "http://${docker0}:6908" > $config_dir/emby_server.txt
 elif curl -siL http://${localip}:5678/d/README.md | grep -v 302 | grep "x-oss-"; then
