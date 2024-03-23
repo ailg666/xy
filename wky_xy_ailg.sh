@@ -27,7 +27,9 @@ WARN "脚本会自动删除现有的名为emby的容器"
 read -n 1 -p "按任意键继续，或按CTR+C退出！"
 
 if [[ -z $1 || -z $2 ]];then
-	ERROR "请在-s后输入两个正确的挂载路径后重新运行脚本，先后对应你小雅emby的config和xiaoya的路径"
+	ERROR "正确的格式为: bash <(curl https://xy.ggbond.org/xy/wky_xy_ailg.sh) /小雅emby的config路径 /小雅emby的xiaoya路径"
+	WARN "请在括号后输入两个正确的挂载路径后重新运行脚本，先后对应你小雅emby的config和xiaoya的路径"
+	WARN "示例：bash <(curl https://xy.ggbond.org/xy/wky_xy_ailg.sh) /mnt/sda1/xiaoya/config /mnt/sda1/xiaoya/xiaoya"
 	exit 1
 fi
 
