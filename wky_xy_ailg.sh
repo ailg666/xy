@@ -35,7 +35,7 @@ fi
 
 #获取小雅alist配置目录路径
 docker_name=$(docker ps -a | grep xiaoyaliu/alist | awk '{print $NF}')
-if command -v jq;then
+if command -v jq > /dev/null 2>&1;then
 	config_dir=$(docker inspect $docker_name | jq -r '.[].Mounts[] | select(.Destination=="/data") | .Source')
 else
 	config_dir=$(docker inspect $docker_name | awk '/"Destination": "\/data"/{print a} {a=$0}'|awk -F\" '{print $4}')
@@ -80,5 +80,5 @@ docker run -d --name emby \
 --add-host="xiaoya.host:$host_ip" \
 --restart always emby/embyserver_arm32v7:4.8.0.56
 
-INFO "小雅emby已安装完成，5分钟后用浏览器打开 http://$host_ip:2345 访问，用户名：xiaoya ,密码： 1234"
+INFO "小雅emby已安装完成，5分钟后用浏览器打开 http://$localip:2345 访问，用户名：xiaoya ,密码： 1234"
 
