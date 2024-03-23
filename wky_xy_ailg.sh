@@ -50,11 +50,11 @@ else
 fi
 
 if curl -siL http://127.0.0.1:5678/d/README.md | grep -v 302 | grep "x-oss-"; then
-	echo "http://127.0.0.1:5678" > $config_dir/emby_server.txt
+	echo "http://127.0.0.1:6908 > $config_dir/emby_server.txt
 elif curl -siL http://${docker0}:5678/d/README.md | grep -v 302 | grep "x-oss-"; then
-	echo "http://${docker0}:5678" > $config_dir/emby_server.txt
+	echo "http://${docker0}:6908" > $config_dir/emby_server.txt
 elif curl -siL http://${localip}:5678/d/README.md | grep -v 302 | grep "x-oss-"; then
-	echo "http://${localip}:5678" > $config_dir/emby_server.txt
+	echo "http://${localip}:6908" > $config_dir/emby_server.txt
 else
 	echo "请检查xiaoya是否正常运行后再试"
 	exit 1
