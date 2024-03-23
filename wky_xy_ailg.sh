@@ -3,6 +3,12 @@
 PATH=${PATH}:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
 
+Sky_Blue="\e[36m"
+Blue="\033[34m"
+Green="\033[32m"
+Red="\033[31m"
+Yellow='\033[33m'
+Font="\033[0m"
 INFO="[${Green}INFO${Font}]"
 ERROR="[${Red}ERROR${Font}]"
 WARN="[${Yellow}WARN${Font}]"
@@ -18,7 +24,10 @@ function WARN() {
 }
 
 WARN "脚本会自动删除现有的名为emby的容器"
+echo $1
+echo $2
 read -n 1 -p "按任意键继续，或按CTR+C退出！"
+
 
 if [[ -z $1 || -z $2 ]];then
 	ERROR "请在-s后输入两个正确的挂载路径后重新运行脚本，先后对应你小雅emby的config和xiaoya的路径"
