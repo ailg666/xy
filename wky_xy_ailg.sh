@@ -24,10 +24,7 @@ function WARN() {
 }
 
 WARN "脚本会自动删除现有的名为emby的容器"
-echo $1
-echo $2
 read -n 1 -p "按任意键继续，或按CTR+C退出！"
-
 
 if [[ -z $1 || -z $2 ]];then
 	ERROR "请在-s后输入两个正确的挂载路径后重新运行脚本，先后对应你小雅emby的config和xiaoya的路径"
@@ -63,6 +60,12 @@ fi
 host_ip=$(grep -oP '\d+\.\d+\.\d+\.\d+' $config_dir/emby_server.txt)
 INFO "小雅alist容器重启中……"
 docker restart $docker_name
+
+if docker inspect emby > /dev/null 2>&1;then
+	INFO "删除旧的emby容器"
+	docker stop emby
+	docker rm emby
+fi
 
 docker run -d --name emby \
 -v /etc/nsswitch.conf:/etc/nsswitch.conf \
