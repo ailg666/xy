@@ -80,5 +80,5 @@ docker run -d --name emby \
 --add-host="xiaoya.host:$host_ip" \
 --restart always emby/embyserver_arm32v7:4.8.0.56
 
-INFO "小雅emby已安装完成，5分钟后用浏览器打开 http://$localip:2345 访问，用户名：xiaoya ,密码： 1234"
+INFO "小雅emby已安装完成，5分钟后用浏览器打开$Yellow http://$localip:2345 $Font	访问，用户名：$Yellow xiaoya $Font,密码：$Yellow 1234 $Font"
 
