@@ -229,7 +229,7 @@ function user_select1(){
 			INFO "小雅alist姐夫版配置路径为：$config_dir"
 		fi	
 	fi
-	curl -o /tmp/update_new_jf.sh https://xy.ggbond.org/ailg-xy/update_new_jf.sh
+	curl -o /tmp/update_new_jf.sh https://xy.ggbond.org/xy/update_new_jf.sh
 	grep -q "长度不对" /tmp/update_new_jf.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/update_new_jf.sh; exit 1; }
 	bash -c "$(cat /tmp/update_new_jf.sh)" -s $config_dir host
 	INFO "${Blue}哇塞！你的小雅alist姐夫版安装完成了！$NC"
@@ -268,10 +268,10 @@ function user_select2(){
 	fi
 	mkdir -p $media_dir/xiaoya
 	mkdir -p $media_dir/temp
-	curl -o /tmp/update_meta_jf.sh https://xy.ggbond.org/ailg-xy/update_meta_jf.sh
+	curl -o /tmp/update_meta_jf.sh https://xy.ggbond.org/xy/update_meta_jf.sh
 	meta_select
 	chmod 777 /tmp/update_meta_jf.sh
-	docker run -i --security-opt seccomp=unconfined --rm --net=host -v /tmp:/tmp -v $media_dir:/media -v $config_dir:/etc/xiaoya -e LANG=C.UTF-8 ailg/ggbond:latest /tmp/update_meta_jf.sh
+	docker run -i --security-opt seccomp=unconfined --rm --net=host -v /tmp:/tmp -v $media_dir:/media -v $config_dir:/etc/xiaoya -e LANG=C.UTF-8 ailg/ggbond:latest bash /tmp/update_meta_jf.sh
 	#dir=$(find $media_dir -type d -name "*config*" -print -quit)
 	mv "$media_dir/jf_config" "$media_dir/confg"
 	chmod -R 777 $media_dir/confg
@@ -286,9 +286,9 @@ function user_select2(){
 	-p 6920:8920 \
 	-p 1909:1900/udp \
 	-p 7369:7359/udp \
-	--privileged --add-host="xiaoya.host:$host" --restart always nyanmisaka/jellyfin:240220-amd64-legacy
+	--privileged --add-host="xiaoya.host:$(echo $host | cut -d'/' -f3)" --restart always nyanmisaka/jellyfin:240220-amd64-legacy
 	INFO "${Blue}小雅姐夫安装完成，正在为您重启小雅alist！$NC"
-	echo "http://${host}:6909" > $config_dir/emby_server.txt
+	echo "${host}:6909" > $config_dir/emby_server.txt
 	docker restart xiaoya_jf
 	start_time=$(date +%s)
 	TARGET_LOG_LINE_SUCCESS="success load storage: [/©️"
@@ -306,7 +306,7 @@ function user_select2(){
 		fi	
 		sleep 3
 	done
-	INFO "请登陆${Blue} http://$host:2345 ${NC}访问小雅姐夫，用户名：${Blue} ailg ${NC}，密码：${Blue} 5678 ${NC}"
+	INFO "请登陆${Blue} $host:2345 ${NC}访问小雅姐夫，用户名：${Blue} ailg ${NC}，密码：${Blue} 5678 ${NC}"
 }
 	
 function user_select3(){

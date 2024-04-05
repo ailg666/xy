@@ -10,7 +10,7 @@ fi
 cd /media/temp || exit
 
 aria2c -o config_jf.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/config_jf.mp4"
-aria2c -o pikpak_jf.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/pikpak_jf.mp4"
+aria2c -o pikpak_jf.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/PikPak_jf.mp4"
 aria2c -o all_jf.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/all_jf.mp4"
 
 cd /media || exit
