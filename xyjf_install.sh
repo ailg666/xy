@@ -232,7 +232,7 @@ function user_select1(){
 	curl -o /tmp/update_new_jf.sh https://xy.ggbond.org/xy/update_new_jf.sh
 	grep -q "长度不对" /tmp/update_new_jf.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/update_new_jf.sh; exit 1; }
 	bash -c "$(cat /tmp/update_new_jf.sh)" -s $config_dir host
-	INFO "${Blue}哇塞！你的小雅alist姐夫版安装完成了！$NC"
+	INFO "${Green}哇塞！你的小雅alist姐夫版安装完成了！$NC"
 }
 
 function user_select2(){
@@ -246,10 +246,11 @@ function user_select2(){
 		read -ep "请选择：（确认重装按Y/y，否则按任意键返回！）" re_setup
 		if [[ $re_setup == [Yy] ]];then
 			check_env
+			jf_name=$(docker ps -a | grep ailg/alist | awk '{print $NF}')
 			get_config_path
-			get_jf_media_path
-			docker stop jellyfin_xy
-			docker rm jellyfin_xy
+			get_jf_media_path $jf_name
+			docker stop $jf_name
+			docker rm $jf_name
 		else
 			main
 			return
@@ -261,7 +262,7 @@ function user_select2(){
 		check_path $media_dir	
 	fi
 	if [ -s $config_dir/docker_address.txt ]; then
-		docker_addr=$(head -n1 /etc/xiaoya/docker_address.txt)
+		docker_addr=$(head -n1 $config_dir/docker_address.txt)
 	else
 		echo "请先配置 /etc/xiaoya/docker_address.txt，以便获取docker 地址"
 		exit
@@ -274,7 +275,7 @@ function user_select2(){
 	docker run -i --security-opt seccomp=unconfined --rm --net=host -v /tmp:/tmp -v $media_dir:/media -v $config_dir:/etc/xiaoya -e LANG=C.UTF-8 ailg/ggbond:latest bash /tmp/update_meta_jf.sh
 	#dir=$(find $media_dir -type d -name "*config*" -print -quit)
 	mv "$media_dir/jf_config" "$media_dir/config"
-	chmod -R 777 $media_dir/confg
+	chmod -R 777 $media_dir/config
 	chmod -R 777 $media_dir/xiaoya
 	host=$(echo $docker_addr|cut -f1,2 -d:)
 	docker run -d --name jellyfin_xy -v /etc/nsswitch.conf:/etc/nsswitch.conf \
@@ -306,7 +307,7 @@ function user_select2(){
 		fi	
 		sleep 3
 	done
-	INFO "请登陆${Blue} $host:2345 ${NC}访问小雅姐夫，用户名：${Blue} ailg ${NC}，密码：${Blue} 5678 ${NC}"
+	INFO "请登陆${Green} $host:2345 ${NC}访问小雅姐夫，用户名：${Blue} ailg ${NC}，密码：${Green} 5678 ${NC}"
 }
 	
 function user_select3(){
