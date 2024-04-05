@@ -246,7 +246,7 @@ function user_select2(){
 		read -ep "请选择：（确认重装按Y/y，否则按任意键返回！）" re_setup
 		if [[ $re_setup == [Yy] ]];then
 			check_env
-			jf_name=$(docker ps -a | grep ailg/alist | awk '{print $NF}')
+			jf_name=$(docker ps -a | grep nyanmisaka/jellyfin:240220 | awk '{print $NF}')
 			get_config_path
 			get_jf_media_path $jf_name
 			docker stop $jf_name
