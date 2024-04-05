@@ -273,14 +273,14 @@ function user_select2(){
 	chmod 777 /tmp/update_meta_jf.sh
 	docker run -i --security-opt seccomp=unconfined --rm --net=host -v /tmp:/tmp -v $media_dir:/media -v $config_dir:/etc/xiaoya -e LANG=C.UTF-8 ailg/ggbond:latest bash /tmp/update_meta_jf.sh
 	#dir=$(find $media_dir -type d -name "*config*" -print -quit)
-	mv "$media_dir/jf_config" "$media_dir/confg"
+	mv "$media_dir/jf_config" "$media_dir/config"
 	chmod -R 777 $media_dir/confg
 	chmod -R 777 $media_dir/xiaoya
 	host=$(echo $docker_addr|cut -f1,2 -d:)
 	docker run -d --name jellyfin_xy -v /etc/nsswitch.conf:/etc/nsswitch.conf \
 	-v $media_dir/config:/config \
 	-v $media_dir/xiaoya:/media \
-	-v /$media_dir/config/cache:/cache \
+	-v $media_dir/config/cache:/cache \
 	--user 0:0 \
 	-p 6909:8096 \
 	-p 6920:8920 \
