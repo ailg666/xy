@@ -1,4 +1,10 @@
 #!/bin/bash
+# shellcheck shell=bash
+# shellcheck disable=SC2086
+# shellcheck disable=SC1091
+# shellcheck disable=SC2154
+# shellcheck disable=SC2162
+
 if [ -d $1/mytoken.txt ]; then
 	rm -rf $1/mytoken.txt
 fi
@@ -70,24 +76,24 @@ else
 fi
 
 if [ $2 ]; then
-if [ $2 == 'host' ]; then
-	if [ ! -s $1/docker_address.txt ]; then
-		echo "http://$localip:5678" > $1/docker_address.txt
-	fi	
-	docker stop xiaoya 2>/dev/null
-	docker rm xiaoya 2>/dev/null
-	docker stop xiaoya-hostmode 2>/dev/null
-	docker rm xiaoya-hostmode 2>/dev/null
-	docker rmi ailg/alist:hostmode
-	docker pull ailg/alist:hostmode
-	if [[ -f $1/proxy.txt ]] && [[ -s $1/proxy.txt ]]; then
-        	proxy_url=$(head -n1 $1/proxy.txt)
-		docker run -d --env HTTP_PROXY="$proxy_url" --env HTTPS_PROXY="$proxy_url" --env no_proxy="*.aliyundrive.com" --network=host -v $1:/data --restart=always --name=xiaoya ailg/alist:hostmode
-	else	
-		docker run -d --network=host -v $1:/data --restart=always --name=xiaoya ailg/alist:hostmode
-	fi	
-	exit
-fi
+	if [ $2 == 'host' ]; then
+		if [ ! -s $1/docker_address.txt ]; then
+			echo "http://$localip:5678" > $1/docker_address.txt
+		fi	
+		docker stop xiaoya 2>/dev/null
+		docker rm xiaoya 2>/dev/null
+		docker stop xiaoya-hostmode 2>/dev/null
+		docker rm xiaoya-hostmode 2>/dev/null
+		docker rmi ailg/alist:hostmode
+		docker pull ailg/alist:hostmode
+		if [[ -f $1/proxy.txt ]] && [[ -s $1/proxy.txt ]]; then
+				proxy_url=$(head -n1 $1/proxy.txt)
+			docker run -d --env HTTP_PROXY="$proxy_url" --env HTTPS_PROXY="$proxy_url" --env no_proxy="*.aliyundrive.com" --network=host -v $1:/data --restart=always --name=xiaoya_jf ailg/alist:hostmode
+		else	
+			docker run -d --network=host -v $1:/data --restart=always --name=xiaoya_jf ailg/alist:hostmode
+		fi	
+		exit
+	fi
 fi
 
 if [ ! -s $1/docker_address.txt ]; then
@@ -99,8 +105,8 @@ docker rmi xiaoyaliu/alist:latest
 docker pull xiaoyaliu/alist:latest
 if [[ -f $1/proxy.txt ]] && [[ -s $1/proxy.txt ]]; then
 	proxy_url=$(head -n1 $1/proxy.txt)
-       	docker run -d -p 5678:80 -p 2345:2345 -p 2346:2346 --env HTTP_PROXY="$proxy_url" --env HTTPS_PROXY="$proxy_url" --env no_proxy="*.aliyundrive.com" -v $1:/data --restart=always --name=xiaoya xiaoyaliu/alist:latest
+       	docker run -d -p 5678:80 -p 2345:2345 -p 2346:2346 --env HTTP_PROXY="$proxy_url" --env HTTPS_PROXY="$proxy_url" --env no_proxy="*.aliyundrive.com" -v $1:/data --restart=always --name=xiaoya_jf ailg/alist:latest
 else
-	docker run -d -p 5678:80 -p 2345:2345 -p 2346:2346 -v $1:/data --restart=always --name=xiaoya xiaoyaliu/alist:latest
+	docker run -d -p 5678:80 -p 2345:2345 -p 2346:2346 -v $1:/data --restart=always --name=xiaoya_jf ailg/alist:latest
 fi	
 
