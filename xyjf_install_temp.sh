@@ -429,7 +429,7 @@ rm_alist() {
 for container in $(docker ps -aq)
 do
     image=$(docker inspect --format '{{.Config.Image}}' "$container")
-    if [[ "$image" == "xiaoyaliu/alist:latest" ]] || [[ "$image" == "xiaoyaliu/alist:hostmode" ]] || [[ "$image" == "ailg/alist:hostmode" ]]; then
+    if [[ "$image" == "xiaoyaliu/alist:latest" ]] || [[ "$image" == "xiaoyaliu/alist:hostmode" ]] || [[ "$image" == "ailg/alist:temp" ]]; then
 		WARN "本安装会删除原有的小雅alist容器，按任意键继续，或按CTRL+C退出！"
 		read -n 1
         echo "Deleting container $container using image $image ..."
