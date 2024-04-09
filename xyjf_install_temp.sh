@@ -229,9 +229,9 @@ function user_select1(){
 			INFO "小雅alist姐夫版配置路径为：$config_dir"
 		fi	
 	fi
-	curl -o /tmp/update_new_jf.sh https://xy.ggbond.org/xy/update_new_jf.sh
-	grep -q "长度不对" /tmp/update_new_jf.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/update_new_jf.sh; exit 1; }
-	bash -c "$(cat /tmp/update_new_jf.sh)" -s $config_dir host
+	curl -o /tmp/update_new_jf_temp.sh https://xy.ggbond.org/xy/update_new_jf_temp.sh
+	grep -q "长度不对" /tmp/update_new_jf_temp.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/update_new_jf_temp.sh; exit 1; }
+	bash -c "$(cat /tmp/update_new_jf_temp.sh)" -s $config_dir host
 	INFO "${Green}哇塞！你的小雅alist姐夫版安装完成了！$NC"
 }
 
