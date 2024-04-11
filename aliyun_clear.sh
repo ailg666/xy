@@ -38,9 +38,9 @@ retry_command() {
 
 #检查脚本更新
 if which curl &>/dev/null;then
-newsh=$(retry_command "curl -k -s \"$upgrade_url\" 2>/dev/null")
+newsh=$(retry_command "curl -k \"$upgrade_url\" 2>/dev/null")
 if [ -z "$(echo "$newsh" | grep "^#!/bin/bash")" ];then
-    newsh=$(retry_command "curl -k -s \"$upgrade_url_backup\" 2>/dev/null")
+    newsh=$(retry_command "curl -k \"$upgrade_url_backup\" 2>/dev/null")
 fi
 fi
 latest_ver=$(echo "$newsh" | grep "^ver=" | tr -d '"ver=')
