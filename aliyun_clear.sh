@@ -48,7 +48,7 @@ if [ -z "$(echo "$newsh" | grep "^#!/bin/bash")" ];then
 fi
 fi
 latest_ver=$(echo "$newsh" | grep "^ver=" | tr -d '"ver=')
-if [ ! "$latest_ver"x = x ] && [ ! "$ver"x = "$latest_ver"x ];then
+if [ ! "$latest_ver"x = x ] && [  "$ver"x = "$latest_ver"x ];then
 filename=${0}
 dir=$(dirname "$filename")
 echo ${0}
