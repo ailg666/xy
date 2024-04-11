@@ -33,4 +33,4 @@ docker exec xiaoyakeeper touch /docker-entrypoint.sh
 docker exec xiaoyakeeper mkdir /etc/xiaoya
 docker cp /tmp/test.sh xiaoyakeeper:/etc/xiaoya/aliyun_clear.sh
 docker restart xiaoyakeeper
-echo -e "\033[1;32m小雅请理守护安装完成！\33[0m"
+echo -e "\033[1;32m小雅请理守护安装完成！\033[0m"
