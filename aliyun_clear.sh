@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -x
 ver="202402190042"
 
 upgrade_url="https://xy.ggbond.org/xy/aliyun_clear.sh"
