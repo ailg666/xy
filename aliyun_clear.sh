@@ -1,5 +1,9 @@
 #!/bin/bash
-set -x
+# shellcheck shell=bash
+# shellcheck disable=SC2086
+# shellcheck disable=SC1091
+# shellcheck disable=SC2154
+
 ver="202402190042"
 
 upgrade_url="https://xy.ggbond.org/xy/aliyun_clear.sh"
@@ -19,7 +23,7 @@ retry_command() {
         if [ $? -eq 0 ]; then
             success=true
         else
-            retries=$(($retries+1))
+            retries=$($retries+1)
             echo "#Failed to execute command \"$(echo "$cmd" | awk '{print $1}')\", retrying in 1 seconds (retry $retries of $max_retries)..." >&2
             sleep 1
         fi
