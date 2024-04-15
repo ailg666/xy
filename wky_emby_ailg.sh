@@ -414,7 +414,7 @@ function main(){
     echo -e "\n"
 	echo -e "\033[1;32m1、安装/重装/卸载小雅ALIST\033[0m"
     echo -e "\n"
-    echo -e "\033[1;35m2、安装/重装/卸载小雅emby（jellyfin）\033[0m"
+    echo -e "\033[1;35m2、安装/重装/卸载小雅emby\033[0m"
     echo -e "\n"
     echo -e "\033[1;32m3、无脑一键全装/重装/卸载\033[0m"
     echo -e "\n"
