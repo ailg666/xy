@@ -307,6 +307,12 @@ function user_select2(){
 		if ! [[ -f /etc/nsswitch.conf ]];then
 			echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf	
 		fi
+		grep -v "^fs.inotify.max_user_watches" /etc/sysctl.conf > temp && mv temp /etc/sysctl.conf
+		echo "fs.inotify.max_user_watches = 524288" >> /etc/sysctl.conf
+		grep -v "^fs.inotify.max_user_instances" /etc/sysctl.conf > temp && mv temp /etc/sysctl.conf
+		echo "fs.inotify.max_user_instances=524288" >> /etc/sysctl.conf
+		sysctl -p
+
 		docker run -d --name emby \
 		-v /etc/nsswitch.conf:/etc/nsswitch.conf \
 		-v $media_dir/config:/config \
