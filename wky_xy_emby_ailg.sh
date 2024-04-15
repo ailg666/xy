@@ -298,8 +298,8 @@ function user_select2(){
 		if ! [[ -d $media_dir/xiaoya ]] || ! [[ -d $media_dir/config ]];then
 			WARN "您输入的媒体库目录不正确，请先获取媒体库元数据后再安装!"
 		fi
-		#INFO "正在设置媒体库权限，请耐心等候……"
-		#chmod -R 777 $media_dir/xiaoya $media_dir/config
+		INFO "正在设置媒体库权限，请耐心等候……"
+		chmod -R 777 $media_dir/xiaoya $media_dir/config
 		get_emby_image
 		INFO "开始安装EMBY……"
 		host=$(echo $docker_addr|cut -f1,2 -d:)
