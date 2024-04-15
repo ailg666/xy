@@ -274,7 +274,7 @@ function user_select2(){
 			read -ep "请选择：（确认重装按Y/y，否则按任意键返回！）" re_setup
 			if [[ $re_setup == [Yy] ]];then
 				check_env
-				emby_name= "emby"
+				emby_name="emby"
 				get_config_path
 				get_emby_media_path $emby_name
 				docker stop $emby_name
@@ -397,7 +397,7 @@ function user_select3(){
 function main(){
     clear
 	st_alist=$(setup_status $(docker ps -a | grep xiaoya/alist | awk '{print $NF}'))
-	st_emby=$(setup_status "emby"))
+	st_emby=$(setup_status "emby")
 	echo -e "\e[33m"
 	echo -e "————————————————————————————————————使  用  说  明————————————————————————————————"
 	echo -e "1、本脚本为小雅emby全家桶的安装脚本，使用于玩客云系统环境，不保证其他系统通用；"
