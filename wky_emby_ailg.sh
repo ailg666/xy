@@ -120,7 +120,7 @@ function get_emby_image() {
 }
 
 function get_config_path(){
-	docker_name=$(docker ps -a | grep xiaoya/alist | awk '{print $NF}')
+	docker_name=$(docker ps -a | grep xiaoyaliu/alist | awk '{print $NF}')
 	if command -v jq;then
 		config_dir=$(docker inspect $docker_name | jq -r '.[].Mounts[] | select(.Destination=="/data") | .Source')
 	else
@@ -244,7 +244,7 @@ function user_select1(){
 		bash -c "$(cat /tmp/update_new.sh)" -s $config_dir host
 		INFO "${Green}哇塞！你的小雅alist安装完成了！$NC"
 	elif [[ $u1_select == 2 ]];then
-		docker_name=$(docker ps -a | grep xiaoya/alist | awk '{print $NF}')
+		docker_name=$(docker ps -a | grep xiaoyaliu/alist | awk '{print $NF}')
 		ddocker stop $docker_name
 		docker rm $docker_name
 		INFO "$docker_name 容器已卸载"
@@ -384,7 +384,7 @@ function user_select3(){
 		INFO "小雅EMBY卸载完成！"
 		
 		INFO "正在卸载小雅ALIST……"
-		docker_name=$(docker ps -a | grep xiaoya/alist | awk '{print $NF}')
+		docker_name=$(docker ps -a | grep xiaoyaliu/alist | awk '{print $NF}')
 		ddocker stop $docker_name
 		docker rm $docker_name
 		INFO "小雅ALIST卸载完成！"
@@ -396,7 +396,7 @@ function user_select3(){
 
 function main(){
     clear
-	st_alist=$(setup_status $(docker ps -a | grep xiaoya/alist | awk '{print $NF}'))
+	st_alist=$(setup_status $(docker ps -a | grep xiaoyaliu/alist | awk '{print $NF}'))
 	st_emby=$(setup_status "emby")
 	echo -e "\e[33m"
 	echo -e "————————————————————————————————————使  用  说  明————————————————————————————————"
@@ -495,7 +495,7 @@ rm_alist() {
 for container in $(docker ps -aq)
 do
     image=$(docker inspect --format '{{.Config.Image}}' "$container")
-    if [[ "$image" == "xiaoyaliu/alist:latest" ]] || [[ "$image" == "xiaoyaliu/alist:hostmode" ]] || [[ "$image" == "xiaoya/alist:hostmode" ]]; then
+    if [[ "$image" == "xiaoyaliu/alist:latest" ]] || [[ "$image" == "xiaoyaliu/alist:hostmode" ]] || [[ "$image" == "xiaoyaliu/alist:hostmode" ]]; then
 		WARN "本安装会删除原有的小雅alist容器，按任意键继续，或按CTRL+C退出！"
 		read -n 1
         echo "Deleting container $container using image $image ..."
