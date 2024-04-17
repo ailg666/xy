@@ -324,7 +324,7 @@ function user_select2(){
 		--restart always $emby_image
 		
 		echo "${host}:6909" > $config_dir/emby_server.txt
-		docker restart xiaoya
+		docker restart xiaoya_jf
 		start_time=$(date +%s)
 		TARGET_LOG_LINE_SUCCESS="success load storage: [/©️"
 		while true; do
