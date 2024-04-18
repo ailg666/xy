@@ -323,7 +323,8 @@ function user_select2(){
 		--add-host="xiaoya.host:$host_ip" \
 		--restart always $emby_image
 		
-		echo "${host}:6909" > $config_dir/emby_server.txt
+		INFO "EMBY安装完成，正在重启小雅alist……"
+		echo "${host}:6908" > $config_dir/emby_server.txt
 		docker restart xiaoya_jf
 		start_time=$(date +%s)
 		TARGET_LOG_LINE_SUCCESS="success load storage: [/©️"
