@@ -12,3 +12,4 @@ cd /etc/nginx/http.d
 curl -O https://xy.ggbond.org/xy/ep.test
 mv externalPlayer_jf.js  externalPlayer_jf.js.bak
 mv ep.test externalPlayer_jf.js
+nginx -s reload
