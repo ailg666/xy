@@ -407,12 +407,16 @@ function user_select4(){
 		main
 		return
 	fi
+	check_env
+	get_config_path
+	echo -e "\033[1;35m请输入您的小雅emby镜像存放路径（请确保大于80G剩余空间！）:\033[0m"
+	read image_dir
+	check_path $image_dir
+	check_space $image_dir 80
 	if [[ $st_emby =~ "已安装" ]];then
 		WARN "您的小雅emby已安装，是否需要重装？"
 		read -ep "请选择：（确认重装按Y/y，否则按任意键返回！）" re_setup
 		if [[ $re_setup == [Yy] ]];then
-			check_env
-			get_config_path
 			get_emby_media_path
 			docker stop $emby_name
 			docker rm $emby_name
@@ -420,12 +424,7 @@ function user_select4(){
 			main
 			return
 		fi
-	else
-		get_config_path
-		echo -e "\033[1;35m请输入您的小雅emby镜像存放路径（请确保大于80G剩余空间！）:\033[0m"
-		read image_dir
-		check_path $image_dir
-		check_space $image_dir 80
+	else	
 		echo -e "\033[1;35m请输入您的小雅emby媒体库挂载路径:\033[0m"
 		echo -e "\033[1;35m注：建议尽量不与镜像存放目录在同一块硬盘（非必须）！\033[0m"
 		read -erp "在此输入：" media_dir
