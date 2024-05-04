@@ -509,7 +509,7 @@ function main(){
 	echo -e "4、如果您喜欢这个脚本，可以请我喝咖啡：https://xy.ggbond.org/xy/3q.jpg\033[0m"
 	echo -e "————————————————————————————————————\033[1;33m安  装  状  态\033[0m————————————————————————————————"
 	echo -e "\e[0m"
-	echo -e "小雅ALIST老G版：${st_alist};          小雅姐夫（jellyfin）：${st_jf}"		小雅emby：${st_emby}"
+	echo -e "小雅ALIST老G版：${st_alist}         小雅姐夫（jellyfin）：${st_jf}		小雅emby：${st_emby}"
 	echo -e "\e[0m"
 	echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
     echo -e "\n"
