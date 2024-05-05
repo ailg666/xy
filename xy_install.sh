@@ -124,12 +124,12 @@ function get_emby_image() {
         exit 1
         ;;
     esac
-	while true;do
+	for i in {1..3};do
 		if docker pull $emby_image; then
 			INFO "${emby_image}镜像拉取成功！"
 			break
 		else
-			ERROR "${emby_image}镜像拉取失败！"
+			ERROR "${emby_image}镜像拉取失败，请手动安装emby，无需重新运行本脚本，小雅媒体库在${media_dir}！"
 			exit 1
 		fi
 	done
@@ -446,8 +446,11 @@ function user_select4(){
 	start_time=$(date +%s)
 	docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
 	aria2c -o /temp/emby-ailg.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4"
-	for i in {1..3}; do
+	while true;do
 		remote_size=$(curl -sL -D - -o /dev/null --max-time 10 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4" | grep "Content-Length" | cut -d' ' -f2)
+		[[ -n $remote_size ]] && break
+	done
+	for i in {1..3}; do	
 		local_size=$(du -b $media_dir/emby-ailg.mp4 | cut -f1)
 		if [[ $remote_size == "$local_size" ]]; then
 			break
@@ -456,6 +459,7 @@ function user_select4(){
 			aria2c -o /temp/emby-ailg.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4"
 		fi
 	done
+	[[ $remote_size != "$local_size" ]] && ERROR "文件下载失败，请检查网络后重新运行脚本！" && exit 1
 	echo -e "\033[1;35m正在提取镜像文件，文件较大，请耐心等待……\033[0m"
 	dd if=$media_dir/emby-ailg.mp4 of=$image_dir/emby-ailg.img bs=10MB skip=1
 	INFO "镜像文件提取完成，已存放在$image_dir中！"
