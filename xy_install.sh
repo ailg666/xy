@@ -490,8 +490,8 @@ function user_select4(){
 		echo "mount -o loop $image_dir/emby-ailg.img $media_dir" >> /etc/rc.local
 	fi
 	current_time=$(date +%s)
-	elapsed_time=$((current_time - start_time))
-	INFO "${Blue}恭喜您！小雅emby安装完成，安装时间为 $elapsed_time 分钟！$NC"
+	elapsed_time=$(awk -v start=$start_time -v end=$current_time 'BEGIN {printf "%.2f\n", (end-start)/60}')
+	INFO "${Blue}恭喜您！小雅emby安装完成，安装时间为 ${elapsed_time} 分钟！$NC"
 	INFO "请登陆${Blue} $host:2345 ${NC}访问小雅emby，用户名：${Blue} xiaoya ${NC}，密码：${Blue} 1234 ${NC}"
 }
 
