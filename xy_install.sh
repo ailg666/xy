@@ -447,7 +447,7 @@ function user_select4(){
 	docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
 	aria2c -o /temp/emby-ailg.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4"
 	for i in {1..3}; do
-		remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4" | grep "Content-Length" | cut -d' ' -f2)
+		remote_size=$(curl -sL -D - -o /dev/null --max-time 10 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4" | grep "Content-Length" | cut -d' ' -f2)
 		local_size=$(du -b $media_dir/emby-ailg.mp4 | cut -f1)
 		if [[ $remote_size == "$local_size" ]]; then
 			break
