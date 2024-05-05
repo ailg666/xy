@@ -433,7 +433,8 @@ function user_select4(){
 		echo -e "\033[1;35m请输入您的小雅emby媒体库挂载路径:\033[0m"
 		echo -e "\033[1;35m注：建议尽量不与镜像存放目录在同一块硬盘（非必须）！\033[0m"
 		read -erp "在此输入：" media_dir
-		check_path $media_dir	
+		check_path $media_dir
+		emby_name=emby
 	fi
 	if [ -s $config_dir/docker_address.txt ]; then
 		docker_addr=$(head -n1 $config_dir/docker_address.txt)
