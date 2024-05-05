@@ -481,27 +481,17 @@ function user_select4(){
 	--net=host \
 	--privileged --add-host="xiaoya.host:$host_ip" --restart always $emby_image
 	
+	#echo "$image_dir/emby-ailg.img $media_dir auto defaults,loop 0 0" >> /etc/fstab
+	cp /etc/rc.local /etc/rc.local.bak
+	sed -i '/mount -o loop .*\.img/d' /etc/rc.local
+	if grep -q 'exit 0' /etc/rc.local; then
+		sed -i "/exit 0/i\mount -o loop $image_dir/emby-ailg.img $media_dir" /etc/rc.local
+	else
+		echo "mount -o loop $image_dir/emby-ailg.img $media_dir" >> /etc/rc.local
+	fi
 	current_time=$(date +%s)
 	elapsed_time=$((current_time - start_time))
 	INFO "${Blue}恭喜您！小雅emby安装完成，安装时间为 $elapsed_time 分钟！$NC"
-	#echo "${host}:6908" > $config_dir/emby_server.txt
-	# docker restart $docker_name
-	# start_time=$(date +%s)
-	# TARGET_LOG_LINE_SUCCESS="success load storage: [/©️"
-	# while true; do
-		# line=$(docker logs "$docker_name" 2>&1| tail -n 10)
-		# echo $line
-		# if [[ "$line" == *"$TARGET_LOG_LINE_SUCCESS"* ]]; then
-			# break
-		# fi
-		# current_time=$(date +%s)
-		# elapsed_time=$((current_time - start_time))
-		# if [ "$elapsed_time" -gt 300 ]; then
-			# WARN "小雅alist未正常启动超时5分钟，程序将退出，请检查小雅alist的安装，如无错误启动完成即可正常使用！"
-			# break
-		# fi	
-		# sleep 3
-	# done
 	INFO "请登陆${Blue} $host:2345 ${NC}访问小雅emby，用户名：${Blue} xiaoya ${NC}，密码：${Blue} 1234 ${NC}"
 }
 
