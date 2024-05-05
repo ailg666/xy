@@ -463,7 +463,7 @@ function user_select4(){
 	INFO "挂载镜像文件中……"
 	rm -f $media_dir/emby-ailg.mp4
 	loop_dav=$(losetup -f)
-	losetup ${loop_dav} $media_dir
+	losetup ${loop_dav} $image_dir/emby-ailg.img
 	mount -o loop $image_dir/emby-ailg.img $media_dir
 	INFO "镜像已成功挂载到$media_dir中！"
 	
