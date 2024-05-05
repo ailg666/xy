@@ -124,12 +124,15 @@ function get_emby_image() {
         exit 1
         ;;
     esac
-	if docker pull $emby_image; then
-		INFO "${emby_image}镜像拉取成功！"
-	else
-		ERROR "${emby_image}镜像拉取失败！"
-		exit 1
-	fi
+	while true;do
+		if docker pull $emby_image; then
+			INFO "${emby_image}镜像拉取成功！"
+			break
+		else
+			ERROR "${emby_image}镜像拉取失败！"
+			exit 1
+		fi
+	done
 }
 
 #获取小雅alist配置目录路径
@@ -298,6 +301,8 @@ function user_select1(){
 	fi
 	curl -o /tmp/update_new_jf.sh https://xy.ggbond.org/xy/update_new_jf.sh
 	grep -q "长度不对" /tmp/update_new_jf.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/update_new_jf.sh; exit 1; }
+	echo "http://127.0.0.1:6908" > $config_dir/emby_server.txt
+	echo "http://127.0.0.1:6909" > $config_dir/jellyfin_server.txt
 	bash -c "$(cat /tmp/update_new_jf.sh)" -s $config_dir host
 	INFO "${Blue}哇塞！你的小雅ALIST老G版安装完成了！$NC"
 }
@@ -437,6 +442,7 @@ function user_select4(){
 		exit
 	fi
 	umask 000
+	start_time=$(date +%s)
 	docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
 	aria2c -o /temp/emby-ailg.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4"
 	for i in {1..3}; do
@@ -473,25 +479,28 @@ function user_select4(){
 	--user 0:0 \
 	--net=host \
 	--privileged --add-host="xiaoya.host:$host_ip" --restart always $emby_image
-	INFO "${Blue}小雅emby安装完成，正在为您重启小雅alist！$NC"
-	echo "${host}:6908" > $config_dir/emby_server.txt
-	docker restart $docker_name
-	start_time=$(date +%s)
-	TARGET_LOG_LINE_SUCCESS="success load storage: [/©️"
-	while true; do
-		line=$(docker logs "$docker_name" 2>&1| tail -n 10)
-		echo $line
-		if [[ "$line" == *"$TARGET_LOG_LINE_SUCCESS"* ]]; then
-			break
-		fi
-		current_time=$(date +%s)
-		elapsed_time=$((current_time - start_time))
-		if [ "$elapsed_time" -gt 300 ]; then
-			WARN "小雅alist未正常启动超时5分钟，程序将退出，请检查小雅alist的安装，如无错误启动完成即可正常使用！"
-			break
-		fi	
-		sleep 3
-	done
+	
+	current_time=$(date +%s)
+	elapsed_time=$((current_time - start_time))
+	INFO "${Blue}恭喜您！小雅emby安装完成，安装时间为 $elapsed_time 分钟！$NC"
+	#echo "${host}:6908" > $config_dir/emby_server.txt
+	# docker restart $docker_name
+	# start_time=$(date +%s)
+	# TARGET_LOG_LINE_SUCCESS="success load storage: [/©️"
+	# while true; do
+		# line=$(docker logs "$docker_name" 2>&1| tail -n 10)
+		# echo $line
+		# if [[ "$line" == *"$TARGET_LOG_LINE_SUCCESS"* ]]; then
+			# break
+		# fi
+		# current_time=$(date +%s)
+		# elapsed_time=$((current_time - start_time))
+		# if [ "$elapsed_time" -gt 300 ]; then
+			# WARN "小雅alist未正常启动超时5分钟，程序将退出，请检查小雅alist的安装，如无错误启动完成即可正常使用！"
+			# break
+		# fi	
+		# sleep 3
+	# done
 	INFO "请登陆${Blue} $host:2345 ${NC}访问小雅emby，用户名：${Blue} xiaoya ${NC}，密码：${Blue} 1234 ${NC}"
 }
 
