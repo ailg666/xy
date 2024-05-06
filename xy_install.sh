@@ -128,11 +128,9 @@ function get_emby_image() {
 		if docker pull $emby_image; then
 			INFO "${emby_image}镜像拉取成功！"
 			break
-		else
-			ERROR "${emby_image}镜像拉取失败，请手动安装emby，无需重新运行本脚本，小雅媒体库在${media_dir}！"
-			exit 1
 		fi
 	done
+	docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ${emby_image} || (ERROR "${emby_image}镜像拉取失败，请手动安装emby，无需重新运行本脚本，小雅媒体库在${media_dir}！" && exit 1)
 }
 
 #获取小雅alist配置目录路径
@@ -160,11 +158,7 @@ function get_config_path(){
 }
 
 function get_jf_media_path(){
-	if [[ -z $1 ]];then
-		jf_name=jellyfin_xy
-	else
-		jf_name=$1
-	fi	
+	jf_name=${1:-jellyfin_xy}
 	if command -v jq;then
 		media_dir=$(docker inspect $jf_name | jq -r '.[].Mounts[] | select(.Destination=="/media") | .Source')
 	else
@@ -189,11 +183,7 @@ function get_jf_media_path(){
 }
 
 function get_emby_media_path(){
-	if [[ -z $1 ]];then
-		emby_name=emby
-	else
-		emby_name=$1
-	fi	
+	emby_name=${1:-emby}
 	if command -v jq;then
 		media_dir=$(docker inspect $emby_name | jq -r '.[].Mounts[] | select(.Destination=="/media") | .Source')
 	else
@@ -444,31 +434,44 @@ function user_select4(){
 	fi
 	umask 000
 	start_time=$(date +%s)
-	docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
-	aria2c -o /temp/emby-ailg.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4"
-	while true;do
-		remote_size=$(curl -sL -D - -o /dev/null --max-time 10 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4" | grep "Content-Length" | cut -d' ' -f2)
+	for i in {1..5};do
+		remote_size=$(curl -sL -D - -o /dev/null --max-time 10 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4" | grep "Content-Length" | cut -d' ' -f2 | tr -d '\r')
 		[[ -n $remote_size ]] && break
 	done
-	for i in {1..3}; do	
-		local_size=$(du -b $media_dir/emby-ailg.mp4 | cut -f1)
-		if [[ $remote_size == "$local_size" ]]; then
-			break
-		else
+	[[ -z $remote_size ]] && ERROR "获取文件大小失败，请检查网络后重新运行脚本！" && exit 1
+	if [[ ! -f $media_dir/emby-ailg.mp4 ]] || [[ -f $media_dir/emby-ailg.mp4.aria2 ]];then
+		docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
+		aria2c -o /temp/emby-ailg.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4"
+	fi
+	local_size=$(du -b $media_dir/emby-ailg.mp4 | cut -f1)
+	for i in {1..3}; do
+		if [[ $remote_size != "$local_size" ]]; then
 			docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
 			aria2c -o /temp/emby-ailg.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4"
+		else
+			break
 		fi
 	done
-	[[ $remote_size != "$local_size" ]] && ERROR "文件下载失败，请检查网络后重新运行脚本！" && exit 1
-	echo -e "\033[1;35m正在提取镜像文件，文件较大，请耐心等待……\033[0m"
-	dd if=$media_dir/emby-ailg.mp4 of=$image_dir/emby-ailg.img bs=10MB skip=1
-	INFO "镜像文件提取完成，已存放在$image_dir中！"
+
+	[[ -f $media_dir/emby-ailg.mp4.aria2 ]] || [[ $remote_size != "$local_size" ]] && ERROR "文件下载失败，请检查网络后重新运行脚本！" && WARN "未下完的文件存放在${media_dir}目录，以便您续传下载，如不再需要请手动清除！" && exit 1
+	
+	if [[ ! -f $image_dir/emby-ailg.img ]] || [[ $(du -b $image_dir/emby-ailg.img | cut -f1) != $((remote_size-10000000)) ]];then
+		echo -e "\033[1;35m正在提取镜像文件，文件较大，请耐心等待……\033[0m"
+		dd if=$media_dir/emby-ailg.mp4 of=$image_dir/emby-ailg.img bs=10MB skip=1
+		INFO "镜像文件提取完成，已存放在$image_dir中！"
+	else
+		INFO "镜像文件已存在，如需重新提取请先在${image_dir}中手动删除后重新运行脚本！"
+	fi
 	
 	INFO "挂载镜像文件中……"
 	rm -f $media_dir/emby-ailg.mp4
-	loop_dav=$(losetup -f)
-	losetup ${loop_dav} $image_dir/emby-ailg.img
-	mount -o loop $image_dir/emby-ailg.img $media_dir
+	
+	loop_device=$(losetup -j "$image_dir/emby-ailg.img" | cut -d: -f1)
+	if [[ -z "$loop_device" ]]; then
+		loop_dev=$(losetup -f)
+		losetup ${loop_dev} $image_dir/emby-ailg.img
+		mount -o loop $image_dir/emby-ailg.img $media_dir
+	fi
 	INFO "镜像已成功挂载到$media_dir中！"
 	
 	INFO "开始安装小雅emby……"
@@ -501,9 +504,9 @@ function user_select4(){
 
 function main(){
     clear
-	st_alist=$(setup_status $(docker ps -a | grep ailg/alist | awk '{print $NF}'))
-	st_jf=$(setup_status $(docker ps -a | grep nyanmisaka/jellyfin:240220 | awk '{print $NF}'))
-	st_emby=$(setup_status $(docker ps -a | grep -E 'emby/embyserver|amilys/embyserver' | awk '{print $NF}'))
+	st_alist=$(setup_status "$(docker ps -a | grep ailg/alist | awk '{print $NF}')")
+	st_jf=$(setup_status "$(docker ps -a | grep nyanmisaka/jellyfin:240220 | awk '{print $NF}')")
+	st_emby=$(setup_status "$(docker ps -a | grep -E 'emby/embyserver|amilys/embyserver' | awk '{print $NF}')")
 	echo -e "\e[33m"
 	echo -e "————————————————————————————————————使  用  说  明————————————————————————————————"
 	echo -e "1、本脚本为小雅Jellyfin全家桶的安装脚本，使用于群晖系统环境，不保证其他系统通用；"
