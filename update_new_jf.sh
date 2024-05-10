@@ -9,6 +9,7 @@ if [ -d $1/mytoken.txt ]; then
 	rm -rf $1/mytoken.txt
 fi
 mkdir -p $1
+mkdir -p $1/data
 touch $1/mytoken.txt
 touch $1/myopentoken.txt
 touch $1/temp_transfer_folder_id.txt
@@ -35,7 +36,7 @@ fi
 myopentokenfilesize=$(cat $1/myopentoken.txt)
 myopentokenstringsize=${#myopentokenfilesize}
 if [ $myopentokenstringsize -le 279 ]; then
-	echo -e "\\033[1;32m获取myopentoken链接：https://alist.nn.ci/zh/guide/drivers/aliyundrive_open.html\\033[0m"
+	echo -e "\\033[1;32m获取myopentoken链接：https://alist.nn.ci/tool/aliyundrive/request.html\\033[0m"
     echo -e "\033[33m"
     read -p "输入你的阿里云盘 Open Token（280位长或者335位长）: " opentoken
 	opentoken_len=${#opentoken}
@@ -88,9 +89,9 @@ if [ $2 ]; then
 		docker pull ailg/alist:hostmode
 		if [[ -f $1/proxy.txt ]] && [[ -s $1/proxy.txt ]]; then
 				proxy_url=$(head -n1 $1/proxy.txt)
-			docker run -d --env HTTP_PROXY="$proxy_url" --env HTTPS_PROXY="$proxy_url" --env no_proxy="*.aliyundrive.com" --network=host -v $1:/data --restart=always --name=xiaoya_jf ailg/alist:hostmode
+			docker run -d --env HTTP_PROXY="$proxy_url" --env HTTPS_PROXY="$proxy_url" --env no_proxy="*.aliyundrive.com" --network=host -v $1:/data -v $1/data:/www/data --restart=always --name=xiaoya_jf ailg/alist:hostmode
 		else	
-			docker run -d --network=host -v $1:/data --restart=always --name=xiaoya_jf ailg/alist:hostmode
+			docker run -d --network=host -v $1:/data -v $1/data:/www/data --restart=always --name=xiaoya_jf ailg/alist:hostmode
 		fi	
 		exit
 	fi
@@ -105,8 +106,8 @@ docker rmi xiaoyaliu/alist:latest
 docker pull xiaoyaliu/alist:latest
 if [[ -f $1/proxy.txt ]] && [[ -s $1/proxy.txt ]]; then
 	proxy_url=$(head -n1 $1/proxy.txt)
-       	docker run -d -p 5678:80 -p 2345:2345 -p 2346:2346 --env HTTP_PROXY="$proxy_url" --env HTTPS_PROXY="$proxy_url" --env no_proxy="*.aliyundrive.com" -v $1:/data --restart=always --name=xiaoya_jf ailg/alist:latest
+       	docker run -d -p 5678:80 -p 2345:2345 -p 2346:2346 --env HTTP_PROXY="$proxy_url" --env HTTPS_PROXY="$proxy_url" --env no_proxy="*.aliyundrive.com" -v $1:/data -v $1/data:/www/data --restart=always --name=xiaoya_jf ailg/alist:latest
 else
-	docker run -d -p 5678:80 -p 2345:2345 -p 2346:2346 -v $1:/data --restart=always --name=xiaoya_jf ailg/alist:latest
+	docker run -d -p 5678:80 -p 2345:2345 -p 2346:2346 -v $1:/data -v $1/data:/www/data --restart=always --name=xiaoya_jf ailg/alist:latest
 fi	
 

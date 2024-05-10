@@ -404,6 +404,7 @@ function user_select4(){
 	fi
 	check_env
 	get_config_path
+	docker exec $docker_name ali_clear -1 > /dev/null 2>&1
 	echo -e "\033[1;35m请输入您的小雅emby镜像存放路径（请确保大于80G剩余空间！）:\033[0m"
 	read image_dir
 	check_path $image_dir
@@ -435,19 +436,22 @@ function user_select4(){
 	umask 000
 	start_time=$(date +%s)
 	for i in {1..5};do
-		remote_size=$(curl -sL -D - -o /dev/null --max-time 10 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4" | grep "Content-Length" | cut -d' ' -f2 | tr -d '\r')
+		remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4" | grep "Content-Length" | cut -d' ' -f2 | tr -d '\r')
 		[[ -n $remote_size ]] && break
 	done
 	[[ -z $remote_size ]] && ERROR "获取文件大小失败，请检查网络后重新运行脚本！" && exit 1
 	if [[ ! -f $media_dir/emby-ailg.mp4 ]] || [[ -f $media_dir/emby-ailg.mp4.aria2 ]];then
+		docker exec $docker_name ali_clear -1 > /dev/null 2>&1
 		docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
 		aria2c -o /temp/emby-ailg.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4"
 	fi
 	local_size=$(du -b $media_dir/emby-ailg.mp4 | cut -f1)
 	for i in {1..3}; do
-		if [[ $remote_size != "$local_size" ]]; then
+		if [[ -f $media_dir/emby-ailg.mp4.aria2 ]] || [[ $remote_size != "$local_size" ]]; then
+			docker exec $docker_name ali_clear -1 > /dev/null 2>&1
 			docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
 			aria2c -o /temp/emby-ailg.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4"
+			local_size=$(du -b $media_dir/emby-ailg.mp4 | cut -f1)
 		else
 			break
 		fi
@@ -473,6 +477,14 @@ function user_select4(){
 		mount -o loop $image_dir/emby-ailg.img $media_dir
 	fi
 	INFO "镜像已成功挂载到$media_dir中！"
+	#echo "$image_dir/emby-ailg.img $media_dir auto defaults,loop 0 0" >> /etc/fstab
+	cp -f /etc/rc.local /etc/rc.local.bak
+	sed -i '/mount -o loop .*\.img/d' /etc/rc.local
+	if grep -q 'exit 0' /etc/rc.local; then
+		sed -i "/exit 0/i\mount -o loop $image_dir/emby-ailg.img $media_dir" /etc/rc.local
+	else
+		echo "mount -o loop $image_dir/emby-ailg.img $media_dir" >> /etc/rc.local
+	fi
 	
 	INFO "开始安装小雅emby……"
 	host=$(echo $docker_addr|cut -f1,2 -d:)
@@ -487,15 +499,7 @@ function user_select4(){
 	--user 0:0 \
 	--net=host \
 	--privileged --add-host="xiaoya.host:$host_ip" --restart always $emby_image
-	
-	#echo "$image_dir/emby-ailg.img $media_dir auto defaults,loop 0 0" >> /etc/fstab
-	cp /etc/rc.local /etc/rc.local.bak
-	sed -i '/mount -o loop .*\.img/d' /etc/rc.local
-	if grep -q 'exit 0' /etc/rc.local; then
-		sed -i "/exit 0/i\mount -o loop $image_dir/emby-ailg.img $media_dir" /etc/rc.local
-	else
-		echo "mount -o loop $image_dir/emby-ailg.img $media_dir" >> /etc/rc.local
-	fi
+
 	current_time=$(date +%s)
 	elapsed_time=$(awk -v start=$start_time -v end=$current_time 'BEGIN {printf "%.2f\n", (end-start)/60}')
 	INFO "${Blue}恭喜您！小雅emby安装完成，安装时间为 ${elapsed_time} 分钟！$NC"
