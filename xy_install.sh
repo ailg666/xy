@@ -397,6 +397,46 @@ function user_select3(){
 }
 
 function user_select4(){
+	while :; do
+		clear
+		echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
+		echo -e "\n"
+		echo -e "A、安装小雅EMBY老G速装版会$Red删除原小雅emby容器，如需保留请退出脚本停止原容器进行更名！$Font"
+		echo -e "\n"
+		echo -e "B、完整版与小雅emby原版一样，Lite版无PikPak数据（适合无梯子用户），请按需选择！"
+		echo -e "\n"
+		echo -e "——————————————————————————————————————————————————————————————————————————————————"
+		echo -e "\n"
+		echo -e "\033[1;32m1、小雅EMBY老G速装 - 完整版\033[0m"
+		echo -e "\n"
+		echo -e "\033[1;35m2、小雅EMBY老G速装 - Lite版\033[0m"
+		echo -e "\n"
+		echo -e "——————————————————————————————————————————————————————————————————————————————————"
+		read -ep "请输入您的选择（1-2，按b返回上级菜单或按q退出）；" f4_select
+		case "$f4_select" in
+		  1)
+			emby_ailg="emby-ailg.mp4"
+			emby_img="emby-ailg.img"
+			space_need=80
+			break ;;
+		  2)
+			emby_ailg="emby-ailg-lite.mp4"
+			emby_img="emby-ailg-lite.img"
+			space_need=60
+			break ;;
+		  [Bb])
+			clear
+			main
+			break ;;
+		  [Qq])
+			exit ;;
+		  *)
+			ERROR "输入错误，按任意键重新输入！"
+			read -n 1
+			continue ;;
+		esac
+	done
+	
 	if [[ $st_alist =~ "未安装" ]];then
 		ERROR "请先安装小雅ALIST老G版，再执行本安装！"
 		main
@@ -405,10 +445,10 @@ function user_select4(){
 	check_env
 	get_config_path
 	docker exec $docker_name ali_clear -1 > /dev/null 2>&1
-	echo -e "\033[1;35m请输入您的小雅emby镜像存放路径（请确保大于80G剩余空间！）:\033[0m"
+	echo -e "\033[1;35m请输入您的小雅emby镜像存放路径（请确保大于${space_need}G剩余空间！）:\033[0m"
 	read image_dir
 	check_path $image_dir
-	check_space $image_dir 80
+	check_space $image_dir $space_need
 	if [[ $st_emby =~ "已安装" ]];then
 		WARN "您的小雅emby已安装，是否需要重装？"
 		read -ep "请选择：（确认重装按Y/y，否则按任意键返回！）" re_setup
@@ -436,59 +476,59 @@ function user_select4(){
 	umask 000
 	start_time=$(date +%s)
 	for i in {1..5};do
-		remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4" | grep "Content-Length" | cut -d' ' -f2 | tr -d '\r')
+		remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/emby/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tr -d '\r')
 		[[ -n $remote_size ]] && break
 	done
-	[[ -z $remote_size ]] && ERROR "获取文件大小失败，请检查网络后重新运行脚本！" && exit 1
-	if [[ ! -f $media_dir/emby-ailg.mp4 ]] || [[ -f $media_dir/emby-ailg.mp4.aria2 ]];then
+	[[ $remote_size -lt 200 ]] && ERROR "获取文件大小失败，请检查网络后重新运行脚本！" && exit 1
+	if [[ ! -f $media_dir/$emby_ailg ]] || [[ -f $media_dir/$emby_ailg.aria2 ]];then
 		docker exec $docker_name ali_clear -1 > /dev/null 2>&1
 		docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
-		aria2c -o /temp/emby-ailg.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4"
+		aria2c -o /temp/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/$emby_ailg"
 	fi
-	local_size=$(du -b $media_dir/emby-ailg.mp4 | cut -f1)
+	local_size=$(du -b $media_dir/$emby_ailg | cut -f1)
 	for i in {1..3}; do
-		if [[ -f $media_dir/emby-ailg.mp4.aria2 ]] || [[ $remote_size != "$local_size" ]]; then
+		if [[ -f $media_dir/$emby_ailg.aria2 ]] || [[ $remote_size != "$local_size" ]]; then
 			docker exec $docker_name ali_clear -1 > /dev/null 2>&1
 			docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
-			aria2c -o /temp/emby-ailg.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/emby-ailg.mp4"
-			local_size=$(du -b $media_dir/emby-ailg.mp4 | cut -f1)
+			aria2c -o /temp/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/$emby_ailg"
+			local_size=$(du -b $media_dir/$emby_ailg | cut -f1)
 		else
 			break
 		fi
 	done
 
-	[[ -f $media_dir/emby-ailg.mp4.aria2 ]] || [[ $remote_size != "$local_size" ]] && ERROR "文件下载失败，请检查网络后重新运行脚本！" && WARN "未下完的文件存放在${media_dir}目录，以便您续传下载，如不再需要请手动清除！" && exit 1
+	[[ -f $media_dir/$emby_ailg.aria2 ]] || [[ $remote_size != "$local_size" ]] && ERROR "文件下载失败，请检查网络后重新运行脚本！" && WARN "未下完的文件存放在${media_dir}目录，以便您续传下载，如不再需要请手动清除！" && exit 1
 	
-	if [[ ! -f $image_dir/emby-ailg.img ]] || [[ $(du -b $image_dir/emby-ailg.img | cut -f1) != $((remote_size-10000000)) ]];then
+	if [[ ! -f $image_dir/${emby_img} ]] || [[ $(du -b $image_dir/${emby_img} | cut -f1) != $((remote_size-10000000)) ]];then
 		echo -e "\033[1;35m正在提取镜像文件，文件较大，请耐心等待……\033[0m"
-		dd if=$media_dir/emby-ailg.mp4 of=$image_dir/emby-ailg.img bs=10MB skip=1
+		dd if=$media_dir/$emby_ailg of=$image_dir/${emby_img} bs=10MB skip=1
 		INFO "镜像文件提取完成，已存放在$image_dir中！"
 	else
 		INFO "镜像文件已存在，如需重新提取请先在${image_dir}中手动删除后重新运行脚本！"
 	fi
 	
 	INFO "挂载镜像文件中……"
-	rm -f $media_dir/emby-ailg.mp4
+	rm -f $media_dir/$emby_ailg
 	
-	loop_device=$(losetup -j "$image_dir/emby-ailg.img" | cut -d: -f1)
+	loop_device=$(losetup -j "$image_dir/${emby_img}" | cut -d: -f1)
 	if [[ -z "$loop_device" ]]; then
 		loop_dev=$(losetup -f)
-		losetup ${loop_dev} $image_dir/emby-ailg.img
-		mount -o loop $image_dir/emby-ailg.img $media_dir
+		losetup ${loop_dev} $image_dir/${emby_img}
 	fi
+	mount -o loop $image_dir/${emby_img} $media_dir
 	INFO "镜像已成功挂载到$media_dir中！"
-	#echo "$image_dir/emby-ailg.img $media_dir auto defaults,loop 0 0" >> /etc/fstab
+	#echo "$image_dir/${emby_img} $media_dir auto defaults,loop 0 0" >> /etc/fstab
 	cp -f /etc/rc.local /etc/rc.local.bak
 	sed -i '/mount -o loop .*\.img/d' /etc/rc.local
 	if grep -q 'exit 0' /etc/rc.local; then
-		sed -i "/exit 0/i\mount -o loop $image_dir/emby-ailg.img $media_dir" /etc/rc.local
+		sed -i "/exit 0/i\mount -o loop $image_dir/${emby_img} $media_dir" /etc/rc.local
 	else
-		echo "mount -o loop $image_dir/emby-ailg.img $media_dir" >> /etc/rc.local
+		echo "mount -o loop $image_dir/${emby_img} $media_dir" >> /etc/rc.local
 	fi
 	
 	INFO "开始安装小雅emby……"
 	host=$(echo $docker_addr|cut -f1,2 -d:)
-	host_ip=$(grep -oP '\d+\.\d+\.\d+\.\d+' $config_dir/docker_address.txt)
+	host_ip=$(echo $docker_addr | cut -d':' -f2 | tr -d '/')
 	if ! [[ -f /etc/nsswitch.conf ]];then
 		echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf	
 	fi
@@ -509,7 +549,7 @@ function user_select4(){
 
 function main(){
     clear
-	st_alist=$(setup_status "$(docker ps -a | grep ailg/alist | awk '{print $NF}')")
+	st_alist=$(setup_status "$(docker ps -a | grep ailg/alist | awk '{print $NF}' | head -n1)")
 	st_jf=$(setup_status "$(docker ps -a | grep nyanmisaka/jellyfin:240220 | awk '{print $NF}')")
 	st_emby=$(setup_status "$(docker ps -a | grep -E 'emby/embyserver|amilys/embyserver' | awk '{print $NF}')")
 	echo -e "\e[33m"
