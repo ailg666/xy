@@ -549,7 +549,7 @@ function user_select4(){
 
 function main(){
     clear
-	st_alist=$(setup_status "$(docker ps -a | grep ailg/alist | awk '{print $NF}')" | head -n1)
+	st_alist=$(setup_status "$(docker ps -a | grep ailg/alist | awk '{print $NF}' | head -n1)")
 	st_jf=$(setup_status "$(docker ps -a | grep nyanmisaka/jellyfin:240220 | awk '{print $NF}')")
 	st_emby=$(setup_status "$(docker ps -a | grep -E 'emby/embyserver|amilys/embyserver' | awk '{print $NF}')")
 	echo -e "\e[33m"
