@@ -401,7 +401,7 @@ function user_select4(){
 		clear
 		echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
 		echo -e "\n"
-		echo -e "A、安装小雅EMBY老G速装版会$Red删除原小雅emby容器，\n\n如需保留请退出脚本停止原容器进行更名！$Font"
+		echo -e "A、安装小雅EMBY老G速装版会$Red删除原小雅emby容器，如需保留请退出脚本停止原容器进行更名！$Font"
 		echo -e "\n"
 		echo -e "B、完整版与小雅emby原版一样，Lite版无PikPak数据（适合无梯子用户），请按需选择！"
 		echo -e "\n"
@@ -416,12 +416,12 @@ function user_select4(){
 		case "$f4_select" in
 		  1)
 			emby_ailg="emby-ailg.mp4"
-			emby-img="emby-ailg.img"
+			emby_img="emby-ailg.img"
 			space_need=80
 			break ;;
 		  2)
 			emby_ailg="emby-ailg-lite.mp4"
-			emby-img="emby-ailg-lite.img"
+			emby_img="emby-ailg-lite.img"
 			space_need=60
 			break ;;
 		  [Bb])
@@ -499,9 +499,9 @@ function user_select4(){
 
 	[[ -f $media_dir/$emby_ailg.aria2 ]] || [[ $remote_size != "$local_size" ]] && ERROR "文件下载失败，请检查网络后重新运行脚本！" && WARN "未下完的文件存放在${media_dir}目录，以便您续传下载，如不再需要请手动清除！" && exit 1
 	
-	if [[ ! -f $image_dir/${emby-img} ]] || [[ $(du -b $image_dir/${emby-img} | cut -f1) != $((remote_size-10000000)) ]];then
+	if [[ ! -f $image_dir/${emby_img} ]] || [[ $(du -b $image_dir/${emby_img} | cut -f1) != $((remote_size-10000000)) ]];then
 		echo -e "\033[1;35m正在提取镜像文件，文件较大，请耐心等待……\033[0m"
-		dd if=$media_dir/$emby_ailg of=$image_dir/${emby-img} bs=10MB skip=1
+		dd if=$media_dir/$emby_ailg of=$image_dir/${emby_img} bs=10MB skip=1
 		INFO "镜像文件提取完成，已存放在$image_dir中！"
 	else
 		INFO "镜像文件已存在，如需重新提取请先在${image_dir}中手动删除后重新运行脚本！"
@@ -510,20 +510,20 @@ function user_select4(){
 	INFO "挂载镜像文件中……"
 	rm -f $media_dir/$emby_ailg
 	
-	loop_device=$(losetup -j "$image_dir/${emby-img}" | cut -d: -f1)
+	loop_device=$(losetup -j "$image_dir/${emby_img}" | cut -d: -f1)
 	if [[ -z "$loop_device" ]]; then
 		loop_dev=$(losetup -f)
-		losetup ${loop_dev} $image_dir/${emby-img}
+		losetup ${loop_dev} $image_dir/${emby_img}
 	fi
-	mount -o loop $image_dir/${emby-img} $media_dir
+	mount -o loop $image_dir/${emby_img} $media_dir
 	INFO "镜像已成功挂载到$media_dir中！"
-	#echo "$image_dir/${emby-img} $media_dir auto defaults,loop 0 0" >> /etc/fstab
+	#echo "$image_dir/${emby_img} $media_dir auto defaults,loop 0 0" >> /etc/fstab
 	cp -f /etc/rc.local /etc/rc.local.bak
 	sed -i '/mount -o loop .*\.img/d' /etc/rc.local
 	if grep -q 'exit 0' /etc/rc.local; then
-		sed -i "/exit 0/i\mount -o loop $image_dir/${emby-img} $media_dir" /etc/rc.local
+		sed -i "/exit 0/i\mount -o loop $image_dir/${emby_img} $media_dir" /etc/rc.local
 	else
-		echo "mount -o loop $image_dir/${emby-img} $media_dir" >> /etc/rc.local
+		echo "mount -o loop $image_dir/${emby_img} $media_dir" >> /etc/rc.local
 	fi
 	
 	INFO "开始安装小雅emby……"
