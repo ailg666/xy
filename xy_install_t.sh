@@ -479,7 +479,7 @@ function user_select4(){
 		remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/emby/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tr -d '\r')
 		[[ -n $remote_size ]] && break
 	done
-	[[ $remote_size lt 200 ]] && ERROR "获取文件大小失败，请检查网络后重新运行脚本！" && exit 1
+	[[ $remote_size -lt 200 ]] && ERROR "获取文件大小失败，请检查网络后重新运行脚本！" && exit 1
 	if [[ ! -f $media_dir/$emby_ailg ]] || [[ -f $media_dir/$emby_ailg.aria2 ]];then
 		docker exec $docker_name ali_clear -1 > /dev/null 2>&1
 		docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
