@@ -555,7 +555,10 @@ function user_select4(){
         exit 1
     fi
 	
-    ! mount | grep "$media_dir" && ERROR "${media_dir}挂载失败，程序退出！" && exit 1
+    if ! mount | grep "$media_dir";then
+		/usr/bin/exp_ailg -m "$image_dir/$emby_ailg" "$media_dir"
+	    ! mount | grep "$media_dir" && ERROR "${media_dir}挂载失败，程序退出！" && exit 1
+	fi
 	INFO "开始安装小雅emby……"
 	host=$(echo $docker_addr|cut -f1,2 -d:)
 	host_ip=$(echo $docker_addr | cut -d':' -f2 | tr -d '/')
