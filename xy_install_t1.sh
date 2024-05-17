@@ -529,6 +529,7 @@ function user_select4(){
     done
     [ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
     chmod 777 /usr/bin/exp_ailg
+	echo "$local_size $remote_size $image_dir/$emby_ailg $media_dir"
 	read -p "eheck1"
     [ "$local_size" -eq "$remote_size" ] && exp_ailg "$image_dir/$emby_ailg" "$media_dir" 30 || INFO "本地已有镜像，无需重新下载！"
 	if [ $? -eq 0 ];then
