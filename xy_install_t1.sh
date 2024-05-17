@@ -526,7 +526,7 @@ function user_select4(){
     done
     [ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
     chmod 777 /usr/bin/exp_ailg
-    [ "$local_size" -eq "$remote_size" ] && exp_ailg "$image_dir/$emby_ailg" "$media_dir" 30
+    [ "$local_size" -eq "$remote_size" ] && exp_ailg "$image_dir/$emby_ailg" "$media_dir" 30 || INFO "本地已有镜像，无需重新下载！"
 	if [ $? -eq 0 ];then
         emby_ailg=${emby_ailg%.mp4}.img
         if [[ $OSNAME == "synology" ]];then
@@ -556,6 +556,7 @@ function user_select4(){
 	INFO "开始安装小雅emby……"
 	host=$(echo $docker_addr|cut -f1,2 -d:)
 	host_ip=$(echo $docker_addr | cut -d':' -f2 | tr -d '/')
+	read -p "check"
 	if ! [[ -f /etc/nsswitch.conf ]];then
 		echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf	
 	fi
