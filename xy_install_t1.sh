@@ -555,6 +555,7 @@ function user_select4(){
         exit 1
     fi
 	
+	INFO "正在将${emby_ailg}挂载到${media_dir}目录……"
     if ! mount | grep "$media_dir";then
 		/usr/bin/exp_ailg -m "$image_dir/$emby_ailg" "$media_dir"
 	    ! mount | grep "$media_dir" && ERROR "${media_dir}挂载失败，程序退出！" && exit 1
