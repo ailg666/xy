@@ -565,7 +565,7 @@ function user_select4(){
 	INFO "开始安装小雅emby……"
 	host=$(echo $docker_addr|cut -f1,2 -d:)
 	host_ip=$(echo $docker_addr | cut -d':' -f2 | tr -d '/')
-	read -p "check"
+	#read -p "check"
 	if ! [[ -f /etc/nsswitch.conf ]];then
 		echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf	
 	fi
