@@ -496,6 +496,7 @@ function user_select4(){
 		read -erp "在此输入：" media_dir
         [ -z "$media_dir" ] && mkdir -p "$image_dir/emby-xy" && media_dir="$image_dir/emby-xy"
 		check_path $media_dir
+		chmod -R 777 $media_dir
 		emby_name=emby
 	fi
 	if [ -s $config_dir/docker_address.txt ]; then
