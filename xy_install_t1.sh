@@ -513,6 +513,8 @@ function user_select4(){
 		[[ -n $remote_size ]] && break
 	done
 	[[ $remote_size -lt 200 ]] && ERROR "获取文件大小失败，请检查网络后重新运行脚本！" && exit 1
+	INFO "远程文件大小获取成功！"
+	INFO "即将下载${emby_img}文件……"
 	if [ ! -f $image_dir/$emby_img ];then
 		down_img
 	else
