@@ -397,6 +397,25 @@ function user_select3(){
 }
 
 function user_select4(){
+	down_img(){
+		if [[ ! -f $image_dir/$emby_ailg ]] || [[ -f $image_dir/$emby_ailg.aria2 ]];then
+			docker exec $docker_name ali_clear -1 > /dev/null 2>&1
+			docker run --rm --net=host -v $image_dir:/image ailg/ggbond \
+			aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/$emby_ailg"
+		fi
+		local_size=$(du -b $image_dir/$emby_ailg | cut -f1)
+		for i in {1..3}; do
+			if [[ -f $image_dir/$emby_ailg.aria2 ]] || [[ $remote_size != "$local_size" ]]; then
+				docker exec $docker_name ali_clear -1 > /dev/null 2>&1
+				docker run --rm --net=host -v $image_dir:/image ailg/ggbond \
+				aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/$emby_ailg"
+				local_size=$(du -b $image_dir/$emby_ailg | cut -f1)
+			else
+				break
+			fi
+		done
+		[[ -f $image_dir/$emby_ailg.aria2 ]] || [[ $remote_size != "$local_size" ]] && ERROR "文件下载失败，请检查网络后重新运行脚本！" && WARN "未下完的文件存放在${image_dir}目录，以便您续传下载，如不再需要请手动清除！" && exit 1
+	}
 	while :; do
 		clear
 		echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
@@ -405,6 +424,8 @@ function user_select4(){
 		echo -e "\n"
 		echo -e "B、完整版与小雅emby原版一样，Lite版无PikPak数据（适合无梯子用户），请按需选择！"
 		echo -e "\n"
+        echo -e "C、${Yellow}如果您的系统不是群晖/unraid，或不支持crontab，您需要手动配置开机自启脚本实现挂载！${NC}"
+        echo -e "\n"
 		echo -e "——————————————————————————————————————————————————————————————————————————————————"
 		echo -e "\n"
 		echo -e "\033[1;32m1、小雅EMBY老G速装 - 完整版\033[0m"
@@ -412,17 +433,26 @@ function user_select4(){
 		echo -e "\033[1;35m2、小雅EMBY老G速装 - Lite版\033[0m"
 		echo -e "\n"
 		echo -e "——————————————————————————————————————————————————————————————————————————————————"
-		read -ep "请输入您的选择（1-2，按b返回上级菜单或按q退出）；" f4_select
+		if [ -f /etc/synoinfo.conf ];then
+            OSNAME='synology'
+        elif [ -f /etc/unraid-version ];then
+            OSNAME='unraid'
+        elif command -v crontab >/dev/null 2>&1 && ps -ef | grep '[c]rond' >/dev/null 2>&1; then
+            OSNAME='other'
+        else
+            WARN "您的系统不支持crontab，需要手动配置开机自启挂载，如您不会请用常规方式安装，按CTRL+C退出！"
+        fi
+        read -ep "请输入您的选择（1-2，按b返回上级菜单或按q退出）；" f4_select
 		case "$f4_select" in
 		  1)
 			emby_ailg="emby-ailg.mp4"
 			emby_img="emby-ailg.img"
-			space_need=80
+			space_need=100
 			break ;;
 		  2)
 			emby_ailg="emby-ailg-lite.mp4"
 			emby_img="emby-ailg-lite.img"
-			space_need=60
+			space_need=80
 			break ;;
 		  [Bb])
 			clear
@@ -462,8 +492,9 @@ function user_select4(){
 		fi
 	else	
 		echo -e "\033[1;35m请输入您的小雅emby媒体库挂载路径:\033[0m"
-		echo -e "\033[1;35m注：建议尽量不与镜像存放目录在同一块硬盘（非必须）！\033[0m"
+		echo -e "\033[1;35m注：请创建/使用一个空目录，直接回车将在镜像存放目录自动创建！\033[0m"
 		read -erp "在此输入：" media_dir
+        [ -z "$media_dir" ] && mkdir -p "$image_dir/emby-xy" && media_dir="$image_dir/emby-xy"
 		check_path $media_dir
 		emby_name=emby
 	fi
@@ -480,52 +511,47 @@ function user_select4(){
 		[[ -n $remote_size ]] && break
 	done
 	[[ $remote_size -lt 200 ]] && ERROR "获取文件大小失败，请检查网络后重新运行脚本！" && exit 1
-	if [[ ! -f $media_dir/$emby_ailg ]] || [[ -f $media_dir/$emby_ailg.aria2 ]];then
-		docker exec $docker_name ali_clear -1 > /dev/null 2>&1
-		docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
-		aria2c -o /temp/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/$emby_ailg"
-	fi
-	local_size=$(du -b $media_dir/$emby_ailg | cut -f1)
-	for i in {1..3}; do
-		if [[ -f $media_dir/$emby_ailg.aria2 ]] || [[ $remote_size != "$local_size" ]]; then
-			docker exec $docker_name ali_clear -1 > /dev/null 2>&1
-			docker run --rm --net=host -v $image_dir:/image -v $media_dir:/temp ailg/ggbond \
-			aria2c -o /temp/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/$emby_ailg"
-			local_size=$(du -b $media_dir/$emby_ailg | cut -f1)
-		else
-			break
-		fi
-	done
-
-	[[ -f $media_dir/$emby_ailg.aria2 ]] || [[ $remote_size != "$local_size" ]] && ERROR "文件下载失败，请检查网络后重新运行脚本！" && WARN "未下完的文件存放在${media_dir}目录，以便您续传下载，如不再需要请手动清除！" && exit 1
-	
-	if [[ ! -f $image_dir/${emby_img} ]] || [[ $(du -b $image_dir/${emby_img} | cut -f1) != $((remote_size-10000000)) ]];then
-		echo -e "\033[1;35m正在提取镜像文件，文件较大，请耐心等待……\033[0m"
-		dd if=$media_dir/$emby_ailg of=$image_dir/${emby_img} bs=10MB skip=1
-		INFO "镜像文件提取完成，已存放在$image_dir中！"
+	if [ ! -f $image_dir/$emby_img ];then
+		down_img
 	else
-		INFO "镜像文件已存在，如需重新提取请先在${image_dir}中手动删除后重新运行脚本！"
+		local_size=$(du -b $image_dir/$emby_img | cut -f1)
+		[ "$local_size" -lt "$remote_size" ] && down_img
 	fi
 	
-	INFO "挂载镜像文件中……"
-	rm -f $media_dir/$emby_ailg
+	for i in {1..5};do
+        [ -f /usr/bin/exp_ailg ] && break
+		curl -sSLf -o /usr/bin/exp_ailg https://xy.ggbond.org/xy/exp_ailg
+        [ $? -eq 0 ] && break
+    done
+    [ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
+    chmod 777 /usr/bin/exp_ailg
+    [ "$local_size" -eq "$remote_size" ] && exp_ailg "$image_dir/$emby_ailg" "$media_dir" 30
+	if [ $? -eq 0 ];then
+        emby_ailg=${emby_ailg%.mp4}.img
+        if [[ $OSNAME == "synology" ]];then
+            cp -f /etc/rc.local /etc/rc.local.bak
+            sed -i '/exp_ailg/d' /etc/rc.local
+            if grep -q 'exit 0' /etc/rc.local; then
+                sed -i "/exit 0/i\/usr/bin/exp_ailg -m \"$image_dir/$emby_ailg\" \"$media_dir\"" /etc/rc.local
+            else
+                echo -e "/usr/bin/exp_ailg -m \"$image_dir/$emby_ailg\" \"$media_dir\"" >> /etc/rc.local
+            fi
+        elif [[ $OSNAME == "unraid" ]];then
+            echo -e "/usr/bin/exp_ailg -m \"$image_dir/$emby_ailg\" \"$media_dir\"" >> /boot/config/go
+        elif [[ $OSNAME == "other" ]];then
+            CRON="@reboot /usr/bin/exp_ailg -m \"$image_dir/$emby_ailg\" \"$media_dir\""
+            crontab -l | grep -v exp_ailg > /tmp/cronjob.tmp
+            echo -e "${CRON}" >> /tmp/cronjob.tmp
+            crontab /tmp/cronjob.tmp
+        else
+            WARN "以下命令请自行配置开机自启动：${Yellow}/usr/bin/exp_ailg -m \"$image_dir/$emby_ailg\" \"$media_dir\"${NC}"
+        fi
+    else
+        ERROR "脚本执行错误，程序退出！"
+        exit 1
+    fi
 	
-	loop_device=$(losetup -j "$image_dir/${emby_img}" | cut -d: -f1)
-	if [[ -z "$loop_device" ]]; then
-		loop_dev=$(losetup -f)
-		losetup ${loop_dev} $image_dir/${emby_img}
-	fi
-	mount -o loop $image_dir/${emby_img} $media_dir
-	INFO "镜像已成功挂载到$media_dir中！"
-	#echo "$image_dir/${emby_img} $media_dir auto defaults,loop 0 0" >> /etc/fstab
-	cp -f /etc/rc.local /etc/rc.local.bak
-	sed -i '/mount -o loop .*\.img/d' /etc/rc.local
-	if grep -q 'exit 0' /etc/rc.local; then
-		sed -i "/exit 0/i\mount -o loop $image_dir/${emby_img} $media_dir" /etc/rc.local
-	else
-		echo "mount -o loop $image_dir/${emby_img} $media_dir" >> /etc/rc.local
-	fi
-	
+    ! mount | grep "$media_dir" && ERROR "${media_dir}挂载失败，程序退出！" && exit 1
 	INFO "开始安装小雅emby……"
 	host=$(echo $docker_addr|cut -f1,2 -d:)
 	host_ip=$(echo $docker_addr | cut -d':' -f2 | tr -d '/')
@@ -547,12 +573,119 @@ function user_select4(){
 	INFO "注：如果$host:6908可访问，$host:2345访问失败（502/500等错误），按如下步骤排障：\n\t1、检查$config_dir/emby_server.txt文件中的地址是否正确指向emby的访问地址，即：$host:6908或http://127.0.0.1:6908\n\t2、地址正确重启你的小雅alist容器即可。"
 }
 
+ailg_uninstall() {
+    INFO "是否${Red}删除老G速装版镜像文件${NC} [Y/n]（默认 Y 删除）"
+    read -erp "请选择:" clear_img
+    [[ -z "${clear_img}" ]] && clear_img="y"
+
+	[ "$1" == "emby" ] && img_ailg="emby-ailg" || img_ailg="jellyfin-ailg"
+	img_num=$(losetup | grep -c "$img_ailg")
+	if [ -z "${img_num}" ];then
+		read -erp "未找到镜像，请手动输入镜像的完整路径：" img_path
+		while :;do
+			[ ! -f "${img_path}" ] && ERROR "您输入的路径和文件不存在，请重新输入，或按CTRL+C退出！"  || break
+		done
+
+		if [ -z "$(losetup -j "$img_path" | cut -d: -f1)" ];then
+			read -erp "未找到镜像挂载路径，请手动输入您要删除的emby的媒体库完整路径：" img_mount
+			if [ -d ${img_mount} ];then
+				if mount | grep -qF ${img_mount};then
+					umount ${img_mount}
+					[ $? -ne 0 ] && ERROR "目录卸载失败，请检查并关闭相关占用后重试，程序退出！" && exit 1
+				else
+					[[ "$(ls -A "${img_mount}")" ]] && ERROR "您输入的目录非空，不是挂载目录，程序退出！" && exit 1
+				fi
+			else
+				ERROR "您输入的目录不存在，程序退出！" && exit 1
+			fi
+		else
+			loop_device=$(losetup -j "$img_path" | cut -d: -f1)
+			if mount | grep -qF ${loop_device};then
+				img_mount=$(mount | grep ${loop_device} | cut -d' ' -f3)
+				umount ${loop_device} && [ $? -ne 0 ] && ERROR "目录卸载失败，请检查并关闭相关占用后重试，程序退出！" && exit 1
+			else
+				read -erp "未找到镜像挂载路径，请手动输入您要删除的emby的媒体库完整路径：" img_mount
+				if [ -d ${img_mount} ];then
+					[[ "$(ls -A "${img_mount}")" ]] && ERROR "您输入的目录非空，不是挂载目录，程序退出！" && exit 1
+				else
+					ERROR "您输入的目录不存在，程序退出！" && exit 1
+				fi
+			fi
+		fi
+	elif [ "${img_num}" -ge 1 ];then
+		losetup | grep "$img_ailg" | awk '{print "["NR"]\t"$1,"\t"$6}'
+		read -erp "请输入您要删除的镜像的序号：" line_number
+		read loop_device img_path <<< $(losetup | grep "$img_ailg" | awk -v line="$line_number" 'NR==line {print $1, $6}')
+		if mount | grep -qF ${loop_device};then
+			img_mount=$(mount | grep ${loop_device} | cut -d' ' -f3)
+			umount ${loop_device} && [ $? -ne 0 ] && ERROR "目录卸载失败，请检查并关闭相关占用后重试，程序退出！" && exit 1
+		else
+			read -erp "未找到镜像挂载路径，请手动输入您要删除的emby的媒体库完整路径：" img_mount
+			if [ -d ${img_mount} ];then
+				[[ "$(ls -A "${img_mount}")" ]] && ERROR "您输入的目录非空，不是挂载目录，程序退出！" && exit 1
+			else
+				ERROR "您输入的目录不存在，程序退出！" && exit 1
+			fi
+		fi
+	fi
+
+	while read container_id; do
+		docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -E "${img_mount}/xiaoya\b" | grep -q ' /media'
+		if [ $? -eq 0 ]; then
+			emby_name=$(docker ps -a --format '{{.Names}}' --filter "id=$container_id")
+			docker stop ${emby_name} && docker rm ${emby_name}
+		fi
+	done < <(docker ps -a --no-trunc --filter "ancestor=emby/embyserver:4.8.0.56" --filter "ancestor=amilys/embyserver:4.8.0.56" --format '{{.ID}}')
+	[[ "${clear_img}" == [Yy] ]] && rm -f ${img_path}
+}
+	
+happy_emby(){
+	read -erp "请输入老G速装版emby的媒体库挂载路径：" img_mount
+	if [ -d "${img_mount}" ];then
+		if [ -d "${img_mount}/xiaoya" ] && [ -d "${img_mount}/config" ];then
+			while read container_id; do
+				docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -E "${img_mount}/xiaoya\b" | grep -q ' /media'
+				if [ $? -eq 0 ]; then
+					emby_name=$(docker ps -a --format '{{.Names}}' --filter "id=$container_id")
+					docker stop ${emby_name} && docker rm ${emby_name}
+				fi
+			done < <(docker ps -a --no-trunc --filter "ancestor=emby/embyserver:4.8.0.56" --filter "ancestor=amilys/embyserver:4.8.0.56" --format '{{.ID}}')
+		else
+			read -erp "未找到该目录对应的镜像，请输入老G速装版emby镜像的完整路径：" img_path
+			if [ -f "${img_path}" ];then
+				loop_device=$(losetup -j "$img_path" | cut -d: -f1)
+				[ -z "${loop_device}" ] && ERROR "该镜像未正确挂载，程序退出！" && exit 1
+				mount $loop_device $img_mount && [ $? -ne 0 ] && ERROR "挂载失败，程序退出！" && exit 1
+			fi
+		fi
+		INFO "开始安装小雅emby……"
+		if command -v ifconfig > /dev/null 2>&1; then
+			localip=$(ifconfig -a|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. | grep -v inet6 | awk '{print $2}'|tr -d "addr:"|head -n1)
+		else
+			localip=$(ip address|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. |grep -v inet6|awk '{print $2}'|tr -d "addr:"|head -n1|cut -f1 -d"/")
+		fi
+		if ! [[ -f /etc/nsswitch.conf ]];then
+			echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf	
+		fi
+		docker run -d --name emby -v /etc/nsswitch.conf:/etc/nsswitch.conf \
+		-v ${img_mount}/config:/config \
+		-v ${img_mount}/xiaoya:/media \
+		--user 0:0 \
+		--net=host \
+		--privileged --add-host="xiaoya.host:$localip" --restart always amilys/embyserver:4.8.0.56
+	else
+		ERROR "您输入的目录不存在，程序退出！" && exit 1
+	fi
+}
+
+
+
 user_selecto(){
 	while :; do
 		clear
 		echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
 		echo -e "\n"
-		echo -e "\033[1;32m1、镜像扩容\033[0m"
+		echo -e "\033[1;32m1、卸载小雅emby老G速装版\033[0m"
 		echo -e "\n"
 		echo -e "\033[1;35m2、更换开心版小EMBY\033[0m"
 		echo -e "\n"
@@ -560,7 +693,7 @@ user_selecto(){
 		read -ep "请输入您的选择（1-2，按b返回上级菜单或按q退出）；" fo_select
 		case "$fo_select" in
 		  1)
-			img_expand
+			ailg_uninstall emby
 			break ;;
 		  2)
 			happy_emby
