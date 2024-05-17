@@ -472,6 +472,7 @@ function user_select4(){
 		main
 		return
 	fi
+	umask 000
 	check_env
 	get_config_path
 	docker exec $docker_name ali_clear -1 > /dev/null 2>&1
@@ -496,7 +497,7 @@ function user_select4(){
 		read -erp "在此输入：" media_dir
         [ -z "$media_dir" ] && mkdir -p "$image_dir/emby-xy" && media_dir="$image_dir/emby-xy"
 		check_path $media_dir
-		chmod -R 777 $media_dir
+		#chmod -R 777 $media_dir
 		emby_name=emby
 	fi
 	if [ -s $config_dir/docker_address.txt ]; then
@@ -505,7 +506,7 @@ function user_select4(){
 		echo "请先配置 $config_dir/docker_address.txt，以便获取docker 地址"
 		exit
 	fi
-	umask 000
+
 	start_time=$(date +%s)
 	for i in {1..5};do
 		remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/emby/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tr -d '\r')
