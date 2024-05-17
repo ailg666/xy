@@ -614,7 +614,7 @@ ailg_uninstall() {
 		fi
 	elif [ "${img_num}" -ge 1 ];then
 		losetup | grep "$img_ailg" | awk '{print "["NR"]\t"$1,"\t"$6}'
-		read -erp "请输入您要删除的镜像的序号：" line_number
+		read -erp "请输入您要删除的emby关联的镜像序号：" line_number
 		read loop_device img_path <<< $(losetup | grep "$img_ailg" | awk -v line="$line_number" 'NR==line {print $1, $6}')
 		if mount | grep -qF ${loop_device};then
 			img_mount=$(mount | grep ${loop_device} | cut -d' ' -f3)
