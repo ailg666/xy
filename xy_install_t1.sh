@@ -754,7 +754,7 @@ function main(){
 	4)
 		clear
 		user_select4;;
-	oO)
+	[Oo])
 		clear
 		user_selecto;;
     [Qq])
