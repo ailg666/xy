@@ -522,10 +522,10 @@ function user_select4(){
 		[ "$local_size" -lt "$remote_size" ] && down_img
 	fi
 	
+	[ -f /usr/bin/exp_ailg ] && rm -f /usr/bin/exp_ailg
 	for i in {1..5};do
-        [ -f /usr/bin/exp_ailg ] && break
 		curl -sSLf -o /usr/bin/exp_ailg https://xy.ggbond.org/xy/exp_ailg
-        [ $? -eq 0 ] && break
+        [ -f /usr/bin/exp_ailg ] && break
     done
     [ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
     chmod 777 /usr/bin/exp_ailg
