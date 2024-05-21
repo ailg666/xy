@@ -437,7 +437,7 @@ function user_select4(){
             OSNAME='synology'
         elif [ -f /etc/unraid-version ];then
             OSNAME='unraid'
-        elif command -v crontab >/dev/null 2>&1 && ps -ef | grep '[c]rond' >/dev/null 2>&1; then
+        elif command -v crontab >/dev/null 2>&1 && ps | grep '[c]rond' >/dev/null 2>&1; then
             OSNAME='other'
         else
             WARN "您的系统不支持crontab，需要手动配置开机自启挂载，如您不会请用常规方式安装，按CTRL+C退出！"
