@@ -20,7 +20,7 @@ mount | grep -qF "$2" && umount "$2"
 if [ ! -z "${loop_device}" ];then
     mount "${loop_device}" "$2"
 else
-    docker run -i --privileged --name=ailg --net=host -v "${image_dir}":/ailg -v "$media_dir":/mount_emby ailg/ggbond:test \
+    docker run -i --privileged --name=ailg --net=host -v "${image_dir}":/ailg -v "$media_dir":/mount_emby ailg/ggbond:latest \
     exp_ailg -m "/ailg/$emby_img" "/mount_emby"
     loop_device=$(losetup -l | grep -E "${emby_img}" | cut -d' ' -f1)
     mount "${loop_device}" "${media_dir}"
