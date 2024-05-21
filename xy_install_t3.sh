@@ -545,10 +545,10 @@ function user_select4(){
     
 	if [ "$local_size" -eq "$remote_size" ];then
         if [ -f "$image_dir/$emby_img" ];then
-			docker run -i --privileged --rm --net=host -v ${image_dir}:/ailg -v $media_dir:/mount_emby /ailg/ggbond:latest \
+			docker run -i --privileged --rm --net=host -v ${image_dir}:/ailg -v $media_dir:/mount_emby ailg/ggbond:latest \
 			exp_ailg "/ailg/$emby_img" "/mount_emby" 30
 		else
-			docker run -i --privileged --rm --net=host -v ${image_dir}:/ailg -v $media_dir:/mount_emby /ailg/ggbond:latest \
+			docker run -i --privileged --rm --net=host -v ${image_dir}:/ailg -v $media_dir:/mount_emby ailg/ggbond:latest \
 			exp_ailg "/ailg/$emby_ailg" "/mount_emby" 30
 		fi
     else    
