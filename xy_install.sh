@@ -405,7 +405,7 @@ function user_select4(){
 		fi
 		local_size=$(du -b $image_dir/$emby_ailg | cut -f1)
 		for i in {1..3}; do
-			if [[ -f $image_dir/$emby_ailg.aria2 ]] || [[ $remote_size != "$local_size" ]]; then
+			if [[ -f $image_dir/$emby_ailg.aria2 ]] || [[ $remote_size -gt "$local_size" ]]; then
 				docker exec $docker_name ali_clear -1 > /dev/null 2>&1
 				docker run --rm --net=host -v $image_dir:/image ailg/ggbond \
 				aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/$emby_ailg"
@@ -437,7 +437,7 @@ function user_select4(){
             OSNAME='synology'
         elif [ -f /etc/unraid-version ];then
             OSNAME='unraid'
-        elif command -v crontab >/dev/null 2>&1 && ps -ef | grep '[c]rond' >/dev/null 2>&1; then
+        elif command -v crontab >/dev/null 2>&1 && ps | grep '[c]rond' >/dev/null 2>&1; then
             OSNAME='other'
         else
             WARN "您的系统不支持crontab，需要手动配置开机自启挂载，如您不会请用常规方式安装，按CTRL+C退出！"
@@ -509,7 +509,7 @@ function user_select4(){
 
 	start_time=$(date +%s)
 	for i in {1..5};do
-		remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/emby/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tr -d '\r')
+		remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/emby/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tail -n 1 | tr -d '\r')
 		[[ -n $remote_size ]] && break
 	done
 	[[ $remote_size -lt 200 ]] && ERROR "获取文件大小失败，请检查网络后重新运行脚本！" && exit 1
@@ -522,35 +522,57 @@ function user_select4(){
 		[ "$local_size" -lt "$remote_size" ] && down_img
 	fi
 	
-	[ -f /usr/bin/exp_ailg ] && rm -f /usr/bin/exp_ailg
-	for i in {1..5};do
-		curl -sSLf -o /usr/bin/exp_ailg https://xy.ggbond.org/xy/exp_ailg
-        [ -f /usr/bin/exp_ailg ] && break
-    done
-    [ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
-    chmod 777 /usr/bin/exp_ailg
+	while read container_id; do
+		docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -E "${img_mount}/xiaoya\b" | grep -q ' /media'
+		if [ $? -eq 0 ]; then
+			emby_name=$(docker ps -a --format '{{.Names}}' --filter "id=$container_id")
+			break
+		fi
+	done < <(docker ps -a --no-trunc --filter "ancestor=emby/embyserver:4.8.0.56" --filter "ancestor=amilys/embyserver:4.8.0.56" --format '{{.ID}}')
+
+	docker ps | grep -qF "$emby_name" && docker stop "$emby_name" && shut_emby=true
+
+	#[ -f /usr/bin/exp_ailg ] && rm -f /usr/bin/exp_ailg
+	# if [ ! -z /usr/bin/exp_ailg ];then
+	# for i in {1..5};do
+	# 	curl -sSLf -o /usr/bin/exp_ailg https://xy.ggbond.org/xy/exp_ailg
+    #     [ -f /usr/bin/exp_ailg ] && break
+    # done
+	# fi
+    # [ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
+    # chmod 777 /usr/bin/exp_ailg
 	echo "$local_size $remote_size $image_dir/$emby_ailg $media_dir"
-	#read -p "eheck1"
-    [ "$local_size" -eq "$remote_size" ] && exp_ailg "$image_dir/$emby_ailg" "$media_dir" 30 || INFO "本地已有镜像，无需重新下载！"
+    
+	if [ "$local_size" -eq "$remote_size" ];then
+        if [ -f "$image_dir/$emby_img" ];then
+			docker run -i --privileged --rm --net=host -v ${image_dir}:/ailg -v $media_dir:/mount_emby ailg/ggbond:latest \
+			exp_ailg "/ailg/$emby_img" "/mount_emby" 30
+		else
+			docker run -i --privileged --rm --net=host -v ${image_dir}:/ailg -v $media_dir:/mount_emby ailg/ggbond:latest \
+			exp_ailg "/ailg/$emby_ailg" "/mount_emby" 30
+		fi
+    else    
+		INFO "本地已有镜像，无需重新下载！"
+	fi
 	if [ $? -eq 0 ];then
-        emby_ailg=${emby_ailg%.mp4}.img
+        #emby_ailg=${emby_ailg%.mp4}.img
         if [[ $OSNAME == "synology" ]];then
             cp -f /etc/rc.local /etc/rc.local.bak
-            sed -i '/exp_ailg/d' /etc/rc.local
+            sed -i '/mount_ailg/d' /etc/rc.local
             if grep -q 'exit 0' /etc/rc.local; then
-                sed -i "/exit 0/i\/usr/bin/exp_ailg -m \"$image_dir/$emby_ailg\" \"$media_dir\"" /etc/rc.local
+                sed -i "/exit 0/i\/usr/bin/mount_ailg \"$image_dir/$emby_img\" \"$media_dir\"" /etc/rc.local
             else
-                echo -e "/usr/bin/exp_ailg -m \"$image_dir/$emby_ailg\" \"$media_dir\"" >> /etc/rc.local
+                echo -e "/usr/bin/mount_ailg \"$image_dir/$emby_img\" \"$media_dir\"" >> /etc/rc.local
             fi
         elif [[ $OSNAME == "unraid" ]];then
-            echo -e "/usr/bin/exp_ailg -m \"$image_dir/$emby_ailg\" \"$media_dir\"" >> /boot/config/go
+            echo -e "/usr/bin/mount_ailg \"$image_dir/$emby_img\" \"$media_dir\"" >> /boot/config/go
         elif [[ $OSNAME == "other" ]];then
-            CRON="@reboot /usr/bin/exp_ailg -m \"$image_dir/$emby_ailg\" \"$media_dir\""
-            crontab -l | grep -v exp_ailg > /tmp/cronjob.tmp
+            CRON="@reboot /usr/bin/mount_ailg \"$image_dir/$emby_img\" \"$media_dir\""
+            crontab -l | grep -v mount_ailg > /tmp/cronjob.tmp
             echo -e "${CRON}" >> /tmp/cronjob.tmp
             crontab /tmp/cronjob.tmp
         else
-            WARN "以下命令请自行配置开机自启动：${Yellow}/usr/bin/exp_ailg -m \"$image_dir/$emby_ailg\" \"$media_dir\"${NC}"
+            WARN "以下命令请自行配置开机自启动：${Yellow}/usr/bin/mount_ailg \"$image_dir/$emby_img\" \"$media_dir\"${NC}"
         fi
     else
         ERROR "脚本执行错误，程序退出！"
@@ -558,30 +580,43 @@ function user_select4(){
     fi
 	
 	INFO "正在将${emby_ailg}挂载到${media_dir}目录……"
-    if ! mount | grep "$media_dir";then
-		/usr/bin/exp_ailg -m "$image_dir/$emby_ailg" "$media_dir"
+    if [ ! -f /usr/bin/mount_ailg ];then
+		for i in {1..5};do
+			curl -sSLf -o /usr/bin/mount_ailg https://xy.ggbond.org/xy/mount_ailg
+			[ -f /usr/bin/mount_ailg ] && break
+		done
+		[ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
+		chmod 777 /usr/bin/mount_ailg
+	fi
+
+	if ! mount | grep "$media_dir";then
+		/usr/bin/mount_ailg "$image_dir/$emby_img" "$media_dir"
 	    ! mount | grep "$media_dir" && ERROR "${media_dir}挂载失败，程序退出！" && exit 1
 	fi
-	INFO "开始安装小雅emby……"
-	host=$(echo $docker_addr|cut -f1,2 -d:)
-	host_ip=$(echo $docker_addr | cut -d':' -f2 | tr -d '/')
-	#read -p "check"
-	if ! [[ -f /etc/nsswitch.conf ]];then
-		echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf	
-	fi
-	get_emby_image
-	docker run -d --name $emby_name -v /etc/nsswitch.conf:/etc/nsswitch.conf \
-	-v $media_dir/config:/config \
-	-v $media_dir/xiaoya:/media \
-	--user 0:0 \
-	--net=host \
-	--privileged --add-host="xiaoya.host:$host_ip" --restart always $emby_image
 
-	current_time=$(date +%s)
-	elapsed_time=$(awk -v start=$start_time -v end=$current_time 'BEGIN {printf "%.2f\n", (end-start)/60}')
-	INFO "${Blue}恭喜您！小雅emby安装完成，安装时间为 ${elapsed_time} 分钟！$NC"
-	INFO "请登陆${Blue} $host:2345 ${NC}访问小雅emby，用户名：${Blue} xiaoya ${NC}，密码：${Blue} 1234 ${NC}"
-	INFO "注：如果$host:6908可访问，$host:2345访问失败（502/500等错误），按如下步骤排障：\n\t1、检查$config_dir/emby_server.txt文件中的地址是否正确指向emby的访问地址，即：$host:6908或http://127.0.0.1:6908\n\t2、地址正确重启你的小雅alist容器即可。"
+	if "${shut_emby}";then
+		INFO "正在为您启动关闭的emby容器" && docker start "${emby_name}"
+	else
+		INFO "开始安装小雅emby……"
+		host=$(echo $docker_addr|cut -f1,2 -d:)
+		host_ip=$(echo $docker_addr | cut -d':' -f2 | tr -d '/')
+		if ! [[ -f /etc/nsswitch.conf ]];then
+			echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf	
+		fi
+		get_emby_image
+		docker run -d --name $emby_name -v /etc/nsswitch.conf:/etc/nsswitch.conf \
+		-v $media_dir/config:/config \
+		-v $media_dir/xiaoya:/media \
+		--user 0:0 \
+		--net=host \
+		--privileged --add-host="xiaoya.host:$host_ip" --restart always $emby_image
+
+		current_time=$(date +%s)
+		elapsed_time=$(awk -v start=$start_time -v end=$current_time 'BEGIN {printf "%.2f\n", (end-start)/60}')
+		INFO "${Blue}恭喜您！小雅emby安装完成，安装时间为 ${elapsed_time} 分钟！$NC"
+		INFO "请登陆${Blue} $host:2345 ${NC}访问小雅emby，用户名：${Blue} xiaoya ${NC}，密码：${Blue} 1234 ${NC}"
+		INFO "注：如果$host:6908可访问，$host:2345访问失败（502/500等错误），按如下步骤排障：\n\t1、检查$config_dir/emby_server.txt文件中的地址是否正确指向emby的访问地址，即：$host:6908或http://127.0.0.1:6908\n\t2、地址正确重启你的小雅alist容器即可。"
+	fi
 }
 
 ailg_uninstall() {
@@ -746,7 +781,7 @@ function main(){
     echo -e "\n"
     echo -e "\033[1;32m3、无脑一键全装/重装小雅姐夫-需更新暂别使用\033[0m"
     echo -e "\n"
-	echo -e "\033[1;35m4、安装/重装小雅emby（老G速装版）-修复测试中，暂别用\033[0m"
+	echo -e "\033[1;35m4、安装/重装小雅emby（老G速装版）\033[0m"
     echo -e "\n"
 	echo -e "\033[1;35mo、有问题？选我看看\033[0m"
     echo -e "\n"
