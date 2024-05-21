@@ -509,7 +509,7 @@ function user_select4(){
 
 	start_time=$(date +%s)
 	for i in {1..5};do
-		remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/emby/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tr -d '\r')
+		remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/emby/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tail -n 1 | tr -d '\r')
 		[[ -n $remote_size ]] && break
 	done
 	[[ $remote_size -lt 200 ]] && ERROR "获取文件大小失败，请检查网络后重新运行脚本！" && exit 1
