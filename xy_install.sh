@@ -133,6 +133,29 @@ function get_emby_image() {
 	docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ${emby_image} || (ERROR "${emby_image}镜像拉取失败，请手动安装emby，无需重新运行本脚本，小雅媒体库在${media_dir}！" && exit 1)
 }
 
+function get_emby_happy_image() {
+    cpu_arch=$(uname -m)
+    case $cpu_arch in
+    "x86_64" | *"amd64"*)
+        emby_image="amilys/embyserver:4.8.0.56"
+		;;
+    "aarch64" | *"arm64"* | *"armv8"* | *"arm/v8"*)
+        emby_image="amilys/embyserver_arm64v8:4.8.6.0"
+        ;;
+	*)
+        ERROR "不支持你的CPU架构：$cpu_arch"
+        exit 1
+        ;;
+    esac
+	for i in {1..3};do
+		if docker pull $emby_image; then
+			INFO "${emby_image}镜像拉取成功！"
+			break
+		fi
+	done
+	docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ${emby_image} || (ERROR "${emby_image}镜像拉取失败，请手动安装emby，无需重新运行本脚本，小雅媒体库在${img_mount}！" && exit 1)
+}
+
 #获取小雅alist配置目录路径
 function get_config_path(){
 	docker_name=$(docker ps -a | grep ailg/alist | awk '{print $NF}')
@@ -704,6 +727,7 @@ happy_emby(){
 				mount $loop_device $img_mount && [ $? -ne 0 ] && ERROR "挂载失败，程序退出！" && exit 1
 			fi
 		fi
+		get_emby_happy_image
 		INFO "开始安装小雅emby……"
 		if command -v ifconfig > /dev/null 2>&1; then
 			localip=$(ifconfig -a|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. | grep -v inet6 | awk '{print $2}'|tr -d "addr:"|head -n1)
@@ -718,7 +742,7 @@ happy_emby(){
 		-v ${img_mount}/xiaoya:/media \
 		--user 0:0 \
 		--net=host \
-		--privileged --add-host="xiaoya.host:$localip" --restart always amilys/embyserver:4.8.0.56
+		--privileged --add-host="xiaoya.host:$localip" --restart always ${emby_image}
 	else
 		ERROR "您输入的目录不存在，程序退出！" && exit 1
 	fi
