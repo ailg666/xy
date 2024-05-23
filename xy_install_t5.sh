@@ -568,8 +568,8 @@ function user_select4(){
     # [ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
     # chmod 777 /usr/bin/exp_ailg
 	echo "$local_size $remote_size $image_dir/$emby_ailg $media_dir"
-    
-	if [ "$local_size" -eq "$remote_size" ];then
+	mount | grep $media_dir && umount $media_dir
+    if [ "$local_size" -eq "$remote_size" ];then
         if [ -f "$image_dir/$emby_img" ];then
 			docker run -i --privileged --rm --net=host -v ${image_dir}:/ailg -v $media_dir:/mount_emby ailg/ggbond:test \
 			exp_ailg "/ailg/$emby_img" "/mount_emby" 30
