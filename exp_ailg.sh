@@ -2,10 +2,10 @@
 
 mode=$(uname -m)
 case $mode in
-    x86_64)
+    "x86_64" | *"amd64"*)
         exp_x86 "$1" "$2" "$3"
         ;;
-    armv7l | aarch64)
+    "armv7l" | "aarch64" | *"arm64"* | *"armv8"* | *"arm/v8"*)
         exp_arm "$1" "$2" "$3"
         ;;
     *)
