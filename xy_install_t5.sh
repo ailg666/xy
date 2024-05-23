@@ -423,14 +423,14 @@ function user_select4(){
 	down_img(){
 		if [[ ! -f $image_dir/$emby_ailg ]] || [[ -f $image_dir/$emby_ailg.aria2 ]];then
 			docker exec $docker_name ali_clear -1 > /dev/null 2>&1
-			docker run --rm --net=host -v $image_dir:/image ailg/ggbond \
+			docker run --rm --net=host -v $image_dir:/image ailg/ggbond:test \
 			aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/$emby_ailg"
 		fi
 		local_size=$(du -b $image_dir/$emby_ailg | cut -f1)
 		for i in {1..3}; do
 			if [[ -f $image_dir/$emby_ailg.aria2 ]] || [[ $remote_size -gt "$local_size" ]]; then
 				docker exec $docker_name ali_clear -1 > /dev/null 2>&1
-				docker run --rm --net=host -v $image_dir:/image ailg/ggbond \
+				docker run --rm --net=host -v $image_dir:/image ailg/ggbond:test \
 				aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/emby/$emby_ailg"
 				local_size=$(du -b $image_dir/$emby_ailg | cut -f1)
 			else
