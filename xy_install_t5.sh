@@ -689,11 +689,12 @@ function user_select4(){
 		fi
 		get_emby_image
         if [ ! -f "$image_dir/run" ];then
-        	for i in {1..5};do
-        		curl -sSLf -o "$image_dir/run" https://xy.ggbond.org/xy/run_emby
-        		[ -f /usr/bin/mount_ailg ] && break
-        	done
-        	[ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
+        	# for i in {1..5};do
+        	# 	curl -sSLf -o "$image_dir/run" https://xy.ggbond.org/xy/run_emby
+        	# 	[ -f /usr/bin/mount_ailg ] && break
+        	# done
+        	# [ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
+			docker cp xiaoya_jf:/var/lib/run "$image_dir/run"
         	chmod 777 "$image_dir/run"
         fi
 		if ${del_emby};then
@@ -733,14 +734,14 @@ function user_select4(){
 
     if [[ ! $answer =~ ^[Nn]$ || -z "$answer" ]]; then
         INFO "正在为您安装小雅元数据爬虫同步……"
-        if [ ! -f "${image_dir}/entrypoint.sh" ];then
-        	for i in {1..5};do
-        		curl -sSLf -o "${image_dir}/entrypoint.sh" https://xy.ggbond.org/xy/entrypoint_emd.sh
-        		[ -f "${image_dir}/entrypoint.sh" ] && break
-        	done
-        	[ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
-        	chmod 777 "${image_dir}/entrypoint.sh"
-        fi
+        # if [ ! -f "${image_dir}/entrypoint.sh" ];then
+        # 	for i in {1..5};do
+        # 		curl -sSLf -o "${image_dir}/entrypoint.sh" https://xy.ggbond.org/xy/entrypoint_emd.sh
+        # 		[ -f "${image_dir}/entrypoint.sh" ] && break
+        # 	done
+        # 	[ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
+        # 	chmod 777 "${image_dir}/entrypoint.sh"
+        # fi
         for i in {1..3};do
             if docker pull ddsderek/xiaoya-emd:latest; then
                 INFO "ddsderek/xiaoya-emd:latest镜像拉取成功！"
@@ -846,7 +847,7 @@ happy_emby(){
 			while :;do
 				read -ep "输入序号：" img_select
 				if [ "${img_select}" -ge 0 ] && [ "${img_select}" -lt ${#img_order[@]} ]; then
-					happy_name=${img_order[${img_select}]}
+					happy_name=${img_order[$((${img_select}-1))]}
 					happy_path=${emby_list[${happy_name}]}
 					docker stop "${happy_name}" && docker rm "${happy_name}"
 					INFO "旧的${happy_name}容器已删除！"
@@ -870,11 +871,61 @@ happy_emby(){
 					ERROR "您输入的序号无效，请输入一个在 1 到 ${#img_order[@]} 之间的数字。"
 				fi
 			done
+		fi
 	else
 		ERROR "您当前未安装小雅emby，程序退出！" && exit 1
 	fi
 }
 
+# mount_img(){
+# 	declare -ga img_order
+# 	get_emby_happy_image
+# 	get_emby_status > /dev/null
+# 	if [ ${#emby_list[@]} -ne 0 ]; then
+# 		for op_emby in ${!emby_list[@]};do
+# 			docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' "${op_emby}" | grep -qE "\.img /media\.img"
+#         	[ $? -eq 0 ] && img_order+=(${op_emby})
+# 		done
+#     	if [ ${#img_order[@]} -ne 0 ]; then
+# 			echo -e "\033[1;37m请选择你要挂载的镜像：\033[0m"
+# 			for index in "${!img_order[@]}"; do
+# 				name=${img_order[$index]}
+# 				printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index+1)) $name ${emby_list[$name]}
+# 			done
+# 			while :;do
+# 				read -ep "输入序号：" img_select
+# 				if [ "${img_select}" -ge 0 ] && [ "${img_select}" -lt ${#img_order[@]} ]; then
+# 					img_path=${emby_list[${happy_name}]}
+# 					img_mount=${img_path%*.img}/emby-xy
+# 					check_path $img_mount
+# 					mount -o loop
+# 					INFO "旧的${happy_name}容器已删除！"
+# 					INFO "开始安装小雅emby……"
+# 					if command -v ifconfig > /dev/null 2>&1; then
+# 						localip=$(ifconfig -a|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. | grep -v inet6 | awk '{print $2}'|tr -d "addr:"|head -n1)
+# 					else
+# 						localip=$(ip address|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. |grep -v inet6|awk '{print $2}'|tr -d "addr:"|head -n1|cut -f1 -d"/")
+# 					fi
+# 					if ! [[ -f /etc/nsswitch.conf ]];then
+# 						echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf	
+# 					fi
+# 					docker run -d --name "${happy_name}" -v /etc/nsswitch.conf:/etc/nsswitch.conf \
+# 					-v "${happy_path}":/media.img \
+# 					-v "${happy_path%/*.img}/run":/etc/cont-init.d/run \
+# 					--user 0:0 \
+# 					--net=host \
+# 					--privileged --add-host="xiaoya.host:$localip" --restart always ${emby_image}
+# 					break
+# 				else
+# 					ERROR "您输入的序号无效，请输入一个在 1 到 ${#img_order[@]} 之间的数字。"
+# 				fi
+# 			done
+# 		fi
+# 	else
+# 		ERROR "您当前未安装小雅emby，程序退出！" && exit 1
+# 	fi
+
+# }
 
 
 user_selecto(){
