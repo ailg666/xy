@@ -276,8 +276,8 @@ meta_select() {
 }
 
 get_emby_status(){
-    declare -A emby_list
-    declare -a emby_order
+    declare -gA emby_list
+    declare -ga emby_order
 
     while read container_id; do
         docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -qE "/xiaoya\b /media\b|\.img /media\.img"
@@ -535,16 +535,18 @@ function user_select4(){
 	if [ ${#emby_list[@]} -ne 0 ]; then
 		for op_emby in ${!emby_list[@]};do
 			docker stop "${op_emby}"
+			INFO "${op_emby}容器已关闭！"
 			if [[ "${emby_list[$op_emby]}" =~ .*\.img ]];then
 				mount | grep "${emby_list[$op_emby]%/*}/emby-xy" && umount "${emby_list[$op_emby]%/*}/emby-xy" && losetup -d /dev/loop10
 			else
 				mount | grep "${emby_list[$op_emby]%/*}" && umount "${emby_list[$op_emby]%/*}"
 			fi
-			[[ "${op_emby}" == "emby" ]] && $del_emby && docker rm "${op_emby}"
+			[[ "${op_emby}" == "emby" ]] && $del_emby && docker rm "${op_emby}" && INFO "${op_emby}容器已删除！"
 		done
 	fi
 	$del_emby && emby_name=emby || emby_name=emby-ailg
 	mkdir -p "$image_dir/emby-xy" && media_dir="$image_dir/emby-xy"
+	losetup | grep loop10 && losetup -d /dev/loop10
 	
 
 	# if [[ $st_emby =~ "已安装" ]];then
@@ -690,12 +692,24 @@ function user_select4(){
         	[ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
         	chmod 777 "$image_dir/run"
         fi
-		docker run -d --name $emby_name -v /etc/nsswitch.conf:/etc/nsswitch.conf \
-		-v $image_dir/$emby_img:/media.img \
-        -v "$image_dir/run":/etc/cont-init.d/run \
-		--user 0:0 \
-		--net=host \
-		--privileged --add-host="xiaoya.host:$host_ip" --restart always $emby_image
+		if ${del_emby};then
+			docker run -d --name $emby_name -v /etc/nsswitch.conf:/etc/nsswitch.conf \
+			-v $image_dir/$emby_img:/media.img \
+			-v "$image_dir/run":/etc/cont-init.d/run \
+			--user 0:0 \
+			--net=host \
+			--privileged --add-host="xiaoya.host:$host_ip" --restart always $emby_image
+		else
+			docker run -d --name $emby_name -v /etc/nsswitch.conf:/etc/nsswitch.conf \
+			-v $image_dir/$emby_img:/media.img \
+			-v "$image_dir/run":/etc/cont-init.d/run \
+			--user 0:0 \
+			-p 5908:6908 \
+			-p 5920:8920 \
+			-p 5900:1900/udp \
+			-p 5359:7359/udp \
+			--privileged --add-host="xiaoya.host:$host_ip" --restart always $emby_image
+		fi
 
 		current_time=$(date +%s)
 		elapsed_time=$(awk -v start=$start_time -v end=$current_time 'BEGIN {printf "%.2f\n", (end-start)/60}')
