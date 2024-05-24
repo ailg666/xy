@@ -296,8 +296,12 @@ get_emby_status(){
             printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index+1)) $name ${emby_list[$name]}
         done
     fi
-    read -ep "$(echo -e '\033[1;36m是否保留名为emby的容器！按Y/y保留，按其他任意键将删除！\033[0m\n请输入：') " del_emby
-    [[ "${del_emby}" == [Yy] ]] && del_emby=false || del_emby=true
+    for name in "${!emby_list[@]}";do
+		if [[ "${name}" == "emby" ]];then
+			read -ep "$(echo -e '\033[1;36m是否保留名为emby的容器！按Y/y保留，按其他任意键将删除！\033[0m\n请输入：') " del_emby
+    		[[ "${del_emby}" == [Yy] ]] && del_emby=false || del_emby=true
+		fi
+	done
 }
 
 
@@ -752,7 +756,7 @@ function user_select4(){
         --privileged \
         --restart=always \
         --net=host \
-        -v "${image_dir}/entrypoint.sh":/entrypoint.sh \
+        -e IMG_VOLUME=true \
         ddsderek/xiaoya-emd:latest
         [ $? -eq 0 ] && INFO "小雅元数据同步爬虫安装成功！" || INFO "小雅元数据同步爬虫安装失败，请手动安装！"
     fi
@@ -825,42 +829,49 @@ ailg_uninstall() {
 }
 	
 happy_emby(){
-	read -erp "请输入老G速装版emby的媒体库挂载路径：" img_mount
-	if [ -d "${img_mount}" ];then
-		if [ -d "${img_mount}/xiaoya" ] && [ -d "${img_mount}/config" ];then
-			while read container_id; do
-				docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -E "${img_mount}/xiaoya\b" | grep -q ' /media'
-				if [ $? -eq 0 ]; then
-					emby_name=$(docker ps -a --format '{{.Names}}' --filter "id=$container_id")
-					docker stop ${emby_name} && docker rm ${emby_name}
+	declare -ga img_order
+	get_emby_happy_image
+	get_emby_status > /dev/null
+	if [ ${#emby_list[@]} -ne 0 ]; then
+		for op_emby in ${!emby_list[@]};do
+			docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' "${op_emby}" | grep -qE "\.img /media\.img"
+        	[ $? -eq 0 ] && img_order+=(${op_emby})
+		done
+    	if [ ${#img_order[@]} -ne 0 ]; then
+			echo -e "\033[1;37m请选择你要换装开心版的emby！\033[0m"
+			for index in "${!img_order[@]}"; do
+				name=${img_order[$index]}
+				printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index+1)) $name ${emby_list[$name]}
+			done
+			while :;do
+				read -ep "输入序号：" img_select
+				if [ "${img_select}" -ge 0 ] && [ "${img_select}" -lt ${#img_order[@]} ]; then
+					happy_name=${img_order[${img_select}]}
+					happy_path=${emby_list[${happy_name}]}
+					docker stop "${happy_name}" && docker rm "${happy_name}"
+					INFO "旧的${happy_name}容器已删除！"
+					INFO "开始安装小雅emby……"
+					if command -v ifconfig > /dev/null 2>&1; then
+						localip=$(ifconfig -a|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. | grep -v inet6 | awk '{print $2}'|tr -d "addr:"|head -n1)
+					else
+						localip=$(ip address|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. |grep -v inet6|awk '{print $2}'|tr -d "addr:"|head -n1|cut -f1 -d"/")
+					fi
+					if ! [[ -f /etc/nsswitch.conf ]];then
+						echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf	
+					fi
+					docker run -d --name "${happy_name}" -v /etc/nsswitch.conf:/etc/nsswitch.conf \
+					-v "${happy_path}":/media.img \
+					-v "${happy_path%/*.img}/run":/etc/cont-init.d/run \
+					--user 0:0 \
+					--net=host \
+					--privileged --add-host="xiaoya.host:$localip" --restart always ${emby_image}
+					break
+				else
+					ERROR "您输入的序号无效，请输入一个在 1 到 ${#img_order[@]} 之间的数字。"
 				fi
-			done < <(docker ps -a --no-trunc --filter "ancestor=emby/embyserver:4.8.0.56" --filter "ancestor=amilys/embyserver:4.8.0.56" --format '{{.ID}}')
-		else
-			read -erp "未找到该目录对应的镜像，请输入老G速装版emby镜像的完整路径：" img_path
-			if [ -f "${img_path}" ];then
-				loop_device=$(losetup -j "$img_path" | cut -d: -f1)
-				[ -z "${loop_device}" ] && ERROR "该镜像未正确挂载，程序退出！" && exit 1
-				mount $loop_device $img_mount && [ $? -ne 0 ] && ERROR "挂载失败，程序退出！" && exit 1
-			fi
-		fi
-		get_emby_happy_image
-		INFO "开始安装小雅emby……"
-		if command -v ifconfig > /dev/null 2>&1; then
-			localip=$(ifconfig -a|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. | grep -v inet6 | awk '{print $2}'|tr -d "addr:"|head -n1)
-		else
-			localip=$(ip address|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. |grep -v inet6|awk '{print $2}'|tr -d "addr:"|head -n1|cut -f1 -d"/")
-		fi
-		if ! [[ -f /etc/nsswitch.conf ]];then
-			echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf	
-		fi
-		docker run -d --name emby -v /etc/nsswitch.conf:/etc/nsswitch.conf \
-		-v ${img_mount}/config:/config \
-		-v ${img_mount}/xiaoya:/media \
-		--user 0:0 \
-		--net=host \
-		--privileged --add-host="xiaoya.host:$localip" --restart always ${emby_image}
+			done
 	else
-		ERROR "您输入的目录不存在，程序退出！" && exit 1
+		ERROR "您当前未安装小雅emby，程序退出！" && exit 1
 	fi
 }
 
