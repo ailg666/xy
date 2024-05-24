@@ -295,9 +295,6 @@ get_emby_status(){
             name=${emby_order[$index]}
             printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index+1)) $name ${emby_list[$name]}
         done
-		st_emby="已安装"
-	else
-		st_emby="未安装"
     fi
     read -ep "$(echo -e '\033[1;36m是否保留名为emby的容器！按Y/y保留，按其他任意键将删除！\033[0m\n请输入：') " del_emby
     [[ "${del_emby}" == [Yy] ]] && del_emby=false || del_emby=true
@@ -476,7 +473,7 @@ function user_select4(){
 		echo -e "\n"
 		echo -e "B、完整版与小雅emby原版一样，Lite版无PikPak数据（适合无梯子用户），请按需选择！"
 		echo -e "\n"
-        echo -e "C、${Yellow}如果您的系统不是群晖/unraid，或不支持crontab，您需要手动配置开机自启脚本实现挂载！${NC}"
+        echo -e "C、${Yellow}老G速装版会随emby启动自动挂载镜像，感谢DDSRem大佬提供的解决思路！${NC}"
         echo -e "\n"
 		echo -e "——————————————————————————————————————————————————————————————————————————————————"
 		echo -e "\n"
@@ -533,8 +530,22 @@ function user_select4(){
 	check_path $image_dir
 	check_space $image_dir $space_need
 
-
 	get_emby_status
+	docker ps -a | grep 'ddsderek/xiaoya-emd' | awk '{print $1}' | xargs docker stop
+	if [ ${#emby_list[@]} -ne 0 ]; then
+		for op_emby in ${!emby_list[@]};do
+			docker stop "${op_emby}"
+			if [[ "${emby_list[$op_emby]}" =~ .*\.img ]];then
+				mount | grep "${emby_list[$op_emby]%/*}/emby-xy" && umount "${emby_list[$op_emby]%/*}/emby-xy" && losetup -d /dev/loop10
+			else
+				mount | grep "${emby_list[$op_emby]%/*}" && umount "${emby_list[$op_emby]%/*}"
+			fi
+			[[ "${op_emby}" == "emby" ]] && $del_emby && docker rm "${op_emby}"
+		done
+	fi
+	$del_emby && emby_name=emby || emby_name=emby-ailg
+	mkdir -p "$image_dir/emby-xy" && media_dir="$image_dir/emby-xy"
+	
 
 	# if [[ $st_emby =~ "已安装" ]];then
 	# 	WARN "您的小雅emby已安装，是否需要重装？"
@@ -558,11 +569,7 @@ function user_select4(){
     # else
     #     emby_name="emby"
 	# fi
-    mkdir -p "$image_dir/emby-xy"
-    if [ -n "${media_dir}" ];then
-        old_media_dir=${media_dir}
-    fi
-    media_dir="$image_dir/emby-xy"
+
 	if [ -s $config_dir/docker_address.txt ]; then
 		docker_addr=$(head -n1 $config_dir/docker_address.txt)
 	else
@@ -585,17 +592,17 @@ function user_select4(){
 		[ "$local_size" -lt "$remote_size" ] && down_img
 	fi
 	
-	while read container_id; do
-		docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -E "${media_dir}/xiaoya\b" | grep -q ' /media'
-		if [ $? -eq 0 ]; then
-			emby_name=$(docker ps -a --format '{{.Names}}' --filter "id=$container_id")
-			break
-		fi
-	done < <(docker ps -a --no-trunc --filter "ancestor=emby/embyserver:4.8.0.56" --filter "ancestor=amilys/embyserver:4.8.0.56" --format '{{.ID}}')
+	# while read container_id; do
+	# 	docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -E "${media_dir}/xiaoya\b" | grep -q ' /media'
+	# 	if [ $? -eq 0 ]; then
+	# 		emby_name=$(docker ps -a --format '{{.Names}}' --filter "id=$container_id")
+	# 		break
+	# 	fi
+	# done < <(docker ps -a --no-trunc --filter "ancestor=emby/embyserver:4.8.0.56" --filter "ancestor=amilys/embyserver:4.8.0.56" --format '{{.ID}}')
 
-	docker ps | grep -qF "$emby_name" && docker stop "$emby_name" && shut_emby=true
-    emd_name=$(docker ps -a | grep "ddsderek/xiaoya-emd" | awk '{print $NF}')
-    [ -n "$emd_name" ] && docker stop "${emd_name}"
+	# docker ps | grep -qF "$emby_name" && docker stop "$emby_name" && shut_emby=true
+    # emd_name=$(docker ps -a | grep "ddsderek/xiaoya-emd" | awk '{print $NF}')
+    # [ -n "$emd_name" ] && docker stop "${emd_name}"
 
 	#[ -f /usr/bin/exp_ailg ] && rm -f /usr/bin/exp_ailg
 	# if [ ! -z /usr/bin/exp_ailg ];then
@@ -662,12 +669,12 @@ function user_select4(){
         curl -sSLf -o /usr/bin/mount_ailg https://xy.ggbond.org/xy/mount_ailg
         chmod 777 /usr/bin/mount_ailg
     fi   
-    /usr/bin/mount_ailg "$image_dir/$emby_img" "$media_dir"
+    #/usr/bin/mount_ailg "$image_dir/$emby_img" "$media_dir"
 
 
-	if "${shut_emby}";then
-		INFO "正在为您启动关闭的emby容器" && docker start "${emby_name}"
-	else
+	# if "${shut_emby}";then
+	# 	INFO "正在为您启动关闭的emby容器" && docker start "${emby_name}"
+	# else
 		INFO "开始安装小雅emby……"
 		host=$(echo $docker_addr|cut -f1,2 -d:)
 		host_ip=$(echo $docker_addr | cut -d':' -f2 | tr -d '/')
@@ -735,8 +742,6 @@ function user_select4(){
         ddsderek/xiaoya-emd:latest
         [ $? -eq 0 ] && INFO "小雅元数据同步爬虫安装成功！" || INFO "小雅元数据同步爬虫安装失败，请手动安装！"
     fi
-
-
 }
 
 ailg_uninstall() {
@@ -883,8 +888,8 @@ function main(){
     clear
 	st_alist=$(setup_status "$(docker ps -a | grep ailg/alist | awk '{print $NF}' | head -n1)")
 	st_jf=$(setup_status "$(docker ps -a | grep nyanmisaka/jellyfin:240220 | awk '{print $NF}')")
-	get_emby_status > /dev/null
-	#st_emby=$(setup_status "$(docker ps -a | grep -E 'emby/embyserver|amilys/embyserver' | awk '{print $NF}')")
+	st_emby=$(setup_status "$(docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' emby | \
+	grep -qE "/xiaoya\b /media\b|\.img /media\.img" && echo 'emby')")
 	echo -e "\e[33m"
 	echo -e "————————————————————————————————————使  用  说  明————————————————————————————————"
 	echo -e "1、本脚本为小雅Jellyfin全家桶的安装脚本，使用于群晖系统环境，不保证其他系统通用；"
