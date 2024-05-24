@@ -541,7 +541,7 @@ function user_select4(){
 			docker stop "${op_emby}"
 			INFO "${op_emby}容器已关闭！"
 			if [[ "${emby_list[$op_emby]}" =~ .*\.img ]];then
-				mount | grep "${emby_list[$op_emby]%/*}/emby-xy" && umount "${emby_list[$op_emby]%/*}/emby-xy" && losetup -d /dev/loop10
+				mount | grep "${emby_list[$op_emby]%/*}/emby-xy" && umount "${emby_list[$op_emby]%/*}/emby-xy" && losetup -d /dev/loop7
 			else
 				mount | grep "${emby_list[$op_emby]%/*}" && umount "${emby_list[$op_emby]%/*}"
 			fi
@@ -550,7 +550,7 @@ function user_select4(){
 	fi
 	$del_emby && emby_name=emby || emby_name=emby-ailg
 	mkdir -p "$image_dir/emby-xy" && media_dir="$image_dir/emby-xy"
-	losetup | grep loop10 && losetup -d /dev/loop10
+	losetup | grep loop7 && losetup -d /dev/loop7
 	
 
 	# if [[ $st_emby =~ "已安装" ]];then
@@ -672,7 +672,7 @@ function user_select4(){
 	#     ! mount | grep "$media_dir" && ERROR "${media_dir}挂载失败，程序退出！" && exit 1
 	# fi
     if [ ! -f /usr/bin/mount_ailg ];then
-        curl -sSLf -o /usr/bin/mount_ailg https://xy.ggbond.org/xy/mount_ailg
+        docker cp xiaoya_jf:/var/lib/mount_ailg "$image_dir/"
         chmod 777 /usr/bin/mount_ailg
     fi   
     #/usr/bin/mount_ailg "$image_dir/$emby_img" "$media_dir"
@@ -694,7 +694,7 @@ function user_select4(){
         	# 	[ -f /usr/bin/mount_ailg ] && break
         	# done
         	# [ $? -ne 0 ] && ERROR "获取文件失败，请检查网络后重试！" && exit 1
-			docker cp xiaoya_jf:/var/lib/run "$image_dir/run"
+			docker cp xiaoya_jf:/var/lib/run "$image_dir/"
         	chmod 777 "$image_dir/run"
         fi
 		if ${del_emby};then

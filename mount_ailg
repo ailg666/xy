@@ -23,7 +23,7 @@ else
     docker run -i --privileged --name=ailg --net=host -v "${image_dir}":/ailg -v "$media_dir":/mount_emby ailg/ggbond:test \
     exp_ailg -m "/ailg/$emby_img" "/mount_emby"
     #loop_device=$(losetup -l | grep -E "${emby_img}" | cut -d' ' -f1)
-    loop_device=/dev/loop10
+    loop_device=/dev/loop7
     mount "${loop_device}" "${media_dir}"
     docker stop ailg && docker rm ailg
 fi

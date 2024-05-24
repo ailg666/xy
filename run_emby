@@ -11,8 +11,8 @@ if [ -f /media.img ]; then
         umount /volume_img
         wait ${!}
     fi
-    losetup -o 10000000 /dev/loop10 /media.img 
-	mount /dev/loop10 /volume_img
+    losetup -o 10000000 /dev/loop7 /media.img 
+	mount /dev/loop7 /volume_img
 	wait ${!}
     echo "img 镜像挂载成功！"
     if [ -d /media ]; then
