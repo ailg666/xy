@@ -16,12 +16,15 @@ if [ -f /media.img ]; then
 	wait ${!}
     echo "img 镜像挂载成功！"
     if [ -d /media ]; then
-		rm -rf /media
-		[ $? -ne 0 ] && echo '删除/media失败！使用老G速装版emby请勿将任何目录挂载到容器的/media目录！程序退出！' && exit 1
+		if ! rm -rf /media; then
+		    echo '删除/media失败！使用老G速装版emby请勿将任何目录挂载到容器的/media目录！程序退出！'
+            exit 1
+        fi
     fi
     ln -sf /volume_img/xiaoya /media
-	sed -i 's/ \/config/ \/volume_img\/config/' /etc/services.d/emby-server/run
-	[ $? -eq 0 ] && echo "replace emby's config successed"
+	if sed -i 's/ \/config/ \/volume_img\/config/' /etc/services.d/emby-server/run; then
+	    echo "replace emby's config successed"
+    fi
 else
     echo "img 镜像未挂载，跳过自动挂载！"
 fi
