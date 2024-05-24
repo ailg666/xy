@@ -214,7 +214,7 @@ function get_emby_media_path(){
 	fi
 	if [[ -n $media_dir ]];then
 		media_dir=$(dirname "$media_dir")
-		echo -e "\033[1;37m找到您的小雅emby媒体库路径是: \033[1;35m\n$media_dir\033[0m"
+		echo -e "\033[1;37m找到您原来的小雅emby媒体库路径是: \033[1;35m\n$media_dir\033[0m"
 	    echo -e "\n"
 	    read -ep "确认请按任意键，或者按N/n手动输入路径：" f12_select_1
 	    if [[ $f12_select_1 == [Nn] ]]; then
@@ -274,6 +274,35 @@ meta_select() {
 		done
 	fi
 }
+
+get_emby_status(){
+    declare -A emby_list
+    declare -a emby_order
+
+    while read container_id; do
+        docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -qE "/xiaoya\b /media\b|\.img /media\.img"
+        if [ $? -eq 0 ]; then
+            container_name=$(docker ps -a --format '{{.Names}}' --filter "id=$container_id")
+            host_path=$(docker inspect --format '{{ range .Mounts }}{{ println .Source }}{{ end }}' $container_id | grep -E "/xiaoya\b|\.img\b")
+            emby_list[$container_name]=$host_path
+            emby_order+=($container_name)
+        fi
+    done < <(docker ps -a | grep -E 'emby\/embyserver|amilys\/embyserver' | awk '{print $1}')
+
+    if [ ${#emby_list[@]} -ne 0 ]; then
+        echo -e "\033[1;37m默认会关闭以下您已安装的小雅emby容器，并删除名为emby的容器！\033[0m"
+        for index in "${!emby_order[@]}"; do
+            name=${emby_order[$index]}
+            printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index+1)) $name ${emby_list[$name]}
+        done
+		st_emby="已安装"
+	else
+		st_emby="未安装"
+    fi
+    read -ep "$(echo -e '\033[1;36m是否保留名为emby的容器！按Y/y保留，按其他任意键将删除！\033[0m\n请输入：') " del_emby
+    [[ "${del_emby}" == [Yy] ]] && del_emby=false || del_emby=true
+}
+
 
 function user_select1(){
 	if [[ $st_alist =~ "已安装" ]];then
@@ -503,29 +532,37 @@ function user_select4(){
 	read image_dir
 	check_path $image_dir
 	check_space $image_dir $space_need
-	if [[ $st_emby =~ "已安装" ]];then
-		WARN "您的小雅emby已安装，是否需要重装？"
-		read -ep "请选择：（确认重装按Y/y，否则按任意键返回！）" re_setup
-		if [[ $re_setup == [Yy] ]];then
-			get_emby_media_path
-			docker stop $emby_name
-			docker rm $emby_name
-		else
-			main
-			return
-		fi
-	# else	
-	# 	echo -e "\033[1;35m请输入您的小雅emby媒体库挂载路径:\033[0m"
-	# 	echo -e "\033[1;35m注：请创建/使用一个空目录，直接回车将在镜像存放目录自动创建！\033[0m"
-	# 	read -erp "在此输入：" media_dir
-    #     [ -z "$media_dir" ] && mkdir -p "$image_dir/emby-xy" && media_dir="$image_dir/emby-xy"
-	# 	check_path $media_dir
-	# 	#chmod -R 777 $media_dir
-	# 	emby_name=emby
-    else
-        emby_name="emby"
-	fi
-    mkdir -p "$image_dir/emby-xy" && media_dir="$image_dir/emby-xy"
+
+
+	get_emby_status
+
+	# if [[ $st_emby =~ "已安装" ]];then
+	# 	WARN "您的小雅emby已安装，是否需要重装？"
+	# 	read -ep "请选择：（确认重装按Y/y，否则按任意键返回！）" re_setup
+	# 	if [[ $re_setup == [Yy] ]];then
+	# 		get_emby_media_path
+	# 		docker stop $emby_name
+	# 		docker rm $emby_name
+	# 	else
+	# 		main
+	# 		return
+	# 	fi
+	# # else	
+	# # 	echo -e "\033[1;35m请输入您的小雅emby媒体库挂载路径:\033[0m"
+	# # 	echo -e "\033[1;35m注：请创建/使用一个空目录，直接回车将在镜像存放目录自动创建！\033[0m"
+	# # 	read -erp "在此输入：" media_dir
+    # #     [ -z "$media_dir" ] && mkdir -p "$image_dir/emby-xy" && media_dir="$image_dir/emby-xy"
+	# # 	check_path $media_dir
+	# # 	#chmod -R 777 $media_dir
+	# # 	emby_name=emby
+    # else
+    #     emby_name="emby"
+	# fi
+    mkdir -p "$image_dir/emby-xy"
+    if [ -n "${media_dir}" ];then
+        old_media_dir=${media_dir}
+    fi
+    media_dir="$image_dir/emby-xy"
 	if [ -s $config_dir/docker_address.txt ]; then
 		docker_addr=$(head -n1 $config_dir/docker_address.txt)
 	else
@@ -549,7 +586,7 @@ function user_select4(){
 	fi
 	
 	while read container_id; do
-		docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -E "${img_mount}/xiaoya\b" | grep -q ' /media'
+		docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -E "${media_dir}/xiaoya\b" | grep -q ' /media'
 		if [ $? -eq 0 ]; then
 			emby_name=$(docker ps -a --format '{{.Names}}' --filter "id=$container_id")
 			break
@@ -557,6 +594,8 @@ function user_select4(){
 	done < <(docker ps -a --no-trunc --filter "ancestor=emby/embyserver:4.8.0.56" --filter "ancestor=amilys/embyserver:4.8.0.56" --format '{{.ID}}')
 
 	docker ps | grep -qF "$emby_name" && docker stop "$emby_name" && shut_emby=true
+    emd_name=$(docker ps -a | grep "ddsderek/xiaoya-emd" | awk '{print $NF}')
+    [ -n "$emd_name" ] && docker stop "${emd_name}"
 
 	#[ -f /usr/bin/exp_ailg ] && rm -f /usr/bin/exp_ailg
 	# if [ ! -z /usr/bin/exp_ailg ];then
@@ -844,7 +883,8 @@ function main(){
     clear
 	st_alist=$(setup_status "$(docker ps -a | grep ailg/alist | awk '{print $NF}' | head -n1)")
 	st_jf=$(setup_status "$(docker ps -a | grep nyanmisaka/jellyfin:240220 | awk '{print $NF}')")
-	st_emby=$(setup_status "$(docker ps -a | grep -E 'emby/embyserver|amilys/embyserver' | awk '{print $NF}')")
+	get_emby_status > /dev/null
+	#st_emby=$(setup_status "$(docker ps -a | grep -E 'emby/embyserver|amilys/embyserver' | awk '{print $NF}')")
 	echo -e "\e[33m"
 	echo -e "————————————————————————————————————使  用  说  明————————————————————————————————"
 	echo -e "1、本脚本为小雅Jellyfin全家桶的安装脚本，使用于群晖系统环境，不保证其他系统通用；"
