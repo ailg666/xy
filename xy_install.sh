@@ -542,7 +542,7 @@ function user_select4(){
 	fi
 	$del_emby && emby_name=emby || emby_name=emby-ailg
 	mkdir -p "$image_dir/emby-xy" && media_dir="$image_dir/emby-xy"
-	losetup | grep loop7 && losetup -d /dev/loop7
+	losetup | grep -q loop7 && losetup -d /dev/loop7
 	
 	if [ -s $config_dir/docker_address.txt ]; then
 		docker_addr=$(head -n1 $config_dir/docker_address.txt)
