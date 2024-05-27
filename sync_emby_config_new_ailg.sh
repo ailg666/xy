@@ -43,28 +43,28 @@ fi
 
 emby_version=$(docker inspect emby | grep -E Image | grep -v sha256 | awk -F\" '{ print $4 }' | cut -d: -f2)
 
-#local_sha=$(docker inspect --format='{{index .RepoDigests 0}}' ailg/ggbond:test  |cut -f2 -d:)
+#local_sha=$(docker inspect --format='{{index .RepoDigests 0}}' ailg/ggbond:latest  |cut -f2 -d:)
 #remote_sha=$(curl -s "https://hub.docker.com/v2/repositories/ailg/ggbond/tags/latest"|grep -o '"digest":"[^"]*' | grep -o '[^"]*$' |tail -n1 |cut -f2 -d:)
 #if [ ! "$local_sha" == "$remote_sha" ]; then
-#	docker rmi ailg/ggbond:test
-#    docker pull ailg/ggbond:test
+#	docker rmi ailg/ggbond:latest
+#    docker pull ailg/ggbond:latest
 #fi
 
-#docker rmi ailg/ggbond:test
+#docker rmi ailg/ggbond:latest
 
-# docker_exist=$(docker images |grep ailg/ggbond:test )
+# docker_exist=$(docker images |grep ailg/ggbond:latest )
 # if [ -z "$docker_exist" ]; then
-    # docker pull ailg/ggbond:test
-    # docker_exist=$(docker images |grep ailg/ggbond:test )
+    # docker pull ailg/ggbond:latest
+    # docker_exist=$(docker images |grep ailg/ggbond:latest )
 	# if [ -z "$docker_exist" ]; then
         # echo "拉取镜像失败，请检查网络，或者翻墙后再试"
 	    # exit 1
     # fi
 # fi
 
-SQLITE_COMMAND="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/config:/emby/config -e LANG=C.UTF-8 ailg/ggbond:test"
-SQLITE_COMMAND_2="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/config/data:/emby/config/data -v /tmp/emby_user.sql:/tmp/emby_user.sql  -v /tmp/emby_library_mediaconfig.sql:/tmp/emby_library_mediaconfig.sql -e LANG=C.UTF-8 ailg/ggbond:test"
-SQLITE_COMMAND_3="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/temp/config/data:/emby/config/data -e LANG=C.UTF-8 ailg/ggbond:test"
+SQLITE_COMMAND="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/config:/emby/config -e LANG=C.UTF-8 ailg/ggbond:latest"
+SQLITE_COMMAND_2="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/config/data:/emby/config/data -v /tmp/emby_user.sql:/tmp/emby_user.sql  -v /tmp/emby_library_mediaconfig.sql:/tmp/emby_library_mediaconfig.sql -e LANG=C.UTF-8 ailg/ggbond:latest"
+SQLITE_COMMAND_3="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/temp/config/data:/emby/config/data -e LANG=C.UTF-8 ailg/ggbond:latest"
 
 if [[ $(docker ps -a | grep -E "(^|\s)$EMBY_NAME(\s|$)") ]];then
 	#mount_paths=$(docker inspect $EMBY_NAME \
@@ -126,7 +126,7 @@ mv  $media_lib/config/data/library.db $media_lib/config/data/library.org.db
 	# -v ${xiaoya_config_dir}:/etc/xiaoya \
 	# --workdir=/media/temp \
 	# -e LANG=C.UTF-8 \
-	# ailg/ggbond:test \
+	# ailg/ggbond:latest \
 	# aria2c -o config.mp4 --continue=true -x6 --conditional-get=true --allow-overwrite=true "${xiaoya_addr}/d/元数据/config.mp4"
 # # 在temp下面解压，最终新config文件路径为temp/config
 # docker run -i \
@@ -137,7 +137,7 @@ mv  $media_lib/config/data/library.db $media_lib/config/data/library.org.db
 	# -v ${xiaoya_config_dir}:/etc/xiaoya \
 	# --workdir=/media/temp \
 	# -e LANG=C.UTF-8 \
-	# ailg/ggbond:test \
+	# ailg/ggbond:latest \
 	# 7z x -aoa -mmt=16 config.mp4
 # echo -e "下载解压元数据完成"
 
@@ -189,7 +189,7 @@ fi
 # rm -f $media_lib/config/mount_paths.txt
 # rm -rf $media_lib/temp/config/*
 
-EMBY_COMMAND="docker run -it --security-opt seccomp=unconfined --rm --net=host -v /tmp/emby.response:/tmp/emby.response -e LANG=C.UTF-8 ailg/ggbond:test"
+EMBY_COMMAND="docker run -it --security-opt seccomp=unconfined --rm --net=host -v /tmp/emby.response:/tmp/emby.response -e LANG=C.UTF-8 ailg/ggbond:latest"
 USER_COUNT=$(${EMBY_COMMAND} jq '.[].Name' /tmp/emby.response |wc -l)
 #echo -e "user_count = $USER_COUNT"
 #read -ep "check user_count"
