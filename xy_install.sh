@@ -667,7 +667,7 @@ function user_select4(){
         --restart=always \
         --net=host \
         -e IMG_VOLUME=true \
-        -v "$image_dir/entrypoint.sh":/entrypoint.sh
+        -v "$image_dir/entrypoint.sh":/entrypoint.sh \
         ddsderek/xiaoya-emd:latest
         [ $? -eq 0 ] && INFO "小雅元数据同步爬虫安装成功！" || INFO "小雅元数据同步爬虫安装失败，请手动安装！"
     fi
