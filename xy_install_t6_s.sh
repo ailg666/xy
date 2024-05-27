@@ -653,12 +653,11 @@ function user_select4(){
         done
         docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ddsderek/xiaoya-emd:latest || (ERROR "ddsderek/xiaoya-emd:latest镜像拉取失败，请检查网络后手动安装！" && exit 1)
         
-        if ! docker cp xiaoya_jf:/var/lib/entrypoint_emd "$image_dir/entrypoint.sh";then
+        if docker cp xiaoya_jf:/var/lib/entrypoint_emd "$image_dir/";then
             if ! curl -o  "$image_dir/entrypoint.sh" https://xy.ggbond.org/xy/entrypoint_emd;then
                 ERROR "获取文件失败，请将老G的alist更新到最新版或检查网络后重试。更新方法：重新运行一键脚本，选1重装alist，使用原来的目录！" && exit 1
             fi
         fi
-        chmod 777 "$image_dir/entrypoint.sh"
         docker ps -a | grep -qE ' xiaoya-emd\b' && docker stop xiaoya-emd && docker rm xiaoya-emd
         [ $? -eq 0 ] && INFO "${Yellow}已删除您原来的xiaoya-emd容器！${NC}"
         docker run -d \
@@ -667,7 +666,7 @@ function user_select4(){
         --restart=always \
         --net=host \
         -e IMG_VOLUME=true \
-        -v "$image_dir/entrypoint.sh":/entrypoint.sh
+        -v "$image_dir/entrypoint_emd":/entrypoint.sh
         ddsderek/xiaoya-emd:latest
         [ $? -eq 0 ] && INFO "小雅元数据同步爬虫安装成功！" || INFO "小雅元数据同步爬虫安装失败，请手动安装！"
     fi
