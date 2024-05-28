@@ -156,6 +156,7 @@ sleep 4
 if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" | grep Chapters3 > /dev/null ; then
 	
 	echo -e "\033[32m$data 同步数据库数据完整\033[0m"
+	echo -e "\033[32m$data 正在复制新的library.db至emby数据库……\033[0m"
 	cp -f $media_lib/temp/config/data/library.db* $media_lib/config/data/
 	${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db "DROP TABLE IF EXISTS UserDatas;"
 	${SQLITE_COMMAND_2} sqlite3 /emby/config/data/library.db ".read /tmp/emby_user.sql"
