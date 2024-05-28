@@ -81,11 +81,11 @@ ${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump ItemExtradata" > /
 ${SQLITE_COMMAND} /emby_userdata.sh
 
 
-read -ep "**检查sql"
+#read -ep "**检查sql"
 mv  $media_lib/config/data/library.db $media_lib/config/data/library.org.db
 [[ -f $media_lib/config/data/library.db-wal ]] && mv $media_lib/config/data/library.db-wal $media_lib/config/data/library.db-wal.bak
 [[ -f $media_lib/config/data/library.db-shm ]] && mv $media_lib/config/data/library.db-shm $media_lib/config/data/library.db-shm.bak
-rm $media_lib/config/data/library.db $media_lib/config/data/library.db-wal $media_lib/config/data/library.db-shm
+#rm $media_lib/config/data/library.db $media_lib/config/data/library.db-wal $media_lib/config/data/library.db-shm
 	
 # 下载解压新config数据
 if command -v ifconfig > /dev/null 2>&1; then
@@ -120,9 +120,9 @@ done
 #if [ -f "$media_lib/temp/config.mp4" ];then
 	local_cfg_size=$(du -b "$media_lib/temp/config.mp4" | cut -f1)
 #fi
-INFO "remote_cfg_size=${remote_cfg_size} local_cfg_size=${local_cfg_size}"
+echo -e "\033[1;33mremote_cfg_size=${remote_cfg_size} local_cfg_size=${local_cfg_size}\033[0m"
 if [[ -z "${local_cfg_size}" ]] || [[ ! $remote_size == "$local_size" ]] || [[ -f $media_lib/temp/config.mp4.aria2 ]];then
-	INFO "正在下载config.mp4……"
+	echo -e "\033[1;33m正在下载config.mp4……\033[0m"
 	rm -f $media_lib/temp/config.mp4
 	docker run -i \
 	--security-opt seccomp=unconfined \
@@ -135,7 +135,7 @@ if [[ -z "${local_cfg_size}" ]] || [[ ! $remote_size == "$local_size" ]] || [[ -
 	ailg/ggbond:latest \
 	aria2c -o config.mp4 --continue=true -x6 --conditional-get=true --allow-overwrite=true "${xiaoya_addr}/d/元数据/config.mp4"
 else
-	INFO "本地config.mp4与远程文件一样，无需重新下载！"
+	echo -e "\033[1;33m本地config.mp4与远程文件一样，无需重新下载！\033[0m"
 fi
 # 在temp下面解压，最终新config文件路径为temp/config
 docker run -i \
@@ -165,6 +165,7 @@ if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" | grep Cha
 	echo "$data 保存用户信息完成"
 	mkdir -p $media_lib/config/cache
 	mkdir -p $media_lib/config/metadata
+	echo -e "\033[1;33m正在复制新的config数据，请耐心等候……\033[0m"
 	cp -rf $media_lib/temp/config/cache/* $media_lib/config/cache/
 	cp -rf $media_lib/temp/config/metadata/* $media_lib/config/metadata/
 	echo "$data 复制新的 config 至 emby数据库 完成"
@@ -197,6 +198,7 @@ fi
 rm -f $media_lib/config/*.sql
 rm -f $media_lib/config/mount_paths.txt
 rm -rf $media_lib/temp/config/*
+[ -n "$4" ] && docker rm "${EMBY_NAME}"
 
 EMBY_COMMAND="docker run -it --security-opt seccomp=unconfined --rm --net=host -v /tmp/emby.response:/tmp/emby.response -e LANG=C.UTF-8 ailg/ggbond:latest"
 USER_COUNT=$(${EMBY_COMMAND} jq '.[].Name' /tmp/emby.response |wc -l)
