@@ -147,7 +147,7 @@ docker run -i \
 	--workdir=/media/temp \
 	-e LANG=C.UTF-8 \
 	ailg/ggbond:latest \
-	7z x -aoa -mmt=16 config.mp4
+	7z x -aoa -bb1 -mmt=16 config.mp4
 echo -e "下载解压元数据完成"
 
 echo "$data 检查同步数据库完整性..."
