@@ -49,7 +49,7 @@ umask=000
 emby_version=$(docker inspect $EMBY_NAME | grep -E Image | grep -v sha256 | awk -F\" '{ print $4 }' | cut -d: -f2)
 
 local_sha=$(docker inspect -f'{{index .RepoDigests 0}}' ailg/ggbond:latest  |cut -f2 -d:)
-remote_sha=$(curl -s "https://hub.docker.com/v2/repositories/ailg/alist/tags/hostmode" | grep -oE '[0-9a-f]{64}' | tail -1)
+remote_sha=$(curl -s "https://hub.docker.com/v2/repositories/ailg/ggbond/tags/latest" | grep -oE '[0-9a-f]{64}' | tail -1)
 if [ ! "$local_sha" == "$remote_sha" ]; then
 	docker rmi ailg/ggbond:latest
     for i in {1..3};do
@@ -120,7 +120,7 @@ done
 #if [ -f "$media_lib/temp/config.mp4" ];then
 	local_cfg_size=$(du -b "$media_lib/temp/config.mp4" | cut -f1)
 #fi
-echo -e "\033[1;33mremote_cfg_size=${remote_cfg_size} local_cfg_size=${local_cfg_size}\033[0m"
+echo -e "\033[1;33mremote_cfg_size=${remote_cfg_size}\nlocal_cfg_size=${local_cfg_size}\033[0m"
 if [[ -z "${local_cfg_size}" ]] || [[ ! $remote_size == "$local_size" ]] || [[ -f $media_lib/temp/config.mp4.aria2 ]];then
 	echo -e "\033[1;33m正在下载config.mp4……\033[0m"
 	rm -f $media_lib/temp/config.mp4
