@@ -120,6 +120,7 @@ done
 #if [ -f "$media_lib/temp/config.mp4" ];then
 	local_cfg_size=$(du -b "$media_lib/temp/config.mp4" | cut -f1)
 #fi
+INFO "remote_cfg_size=${remote_cfg_size} local_cfg_size=${local_cfg_size}"
 if [[ -z "${local_cfg_size}" ]] || [[ ! $remote_size == "$local_size" ]] || [[ -f $media_lib/temp/config.mp4.aria2 ]];then
 	INFO "正在下载config.mp4……"
 	rm -f $media_lib/temp/config.mp4
