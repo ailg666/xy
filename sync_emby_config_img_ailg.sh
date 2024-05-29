@@ -35,6 +35,9 @@ fi
 
 if [ $4 ]; then
 	IMG_NAME=$4
+	if [ ! -d "$1/config_sync" ]; then
+		mkdir "$1/config_sync"
+	fi
 fi
 
 if [ $2 ]; then
@@ -46,9 +49,7 @@ else
 fi
 
 media_lib=$1
-if [ ! -d $media_lib/config_sync ]; then
-	mkdir $media_lib/config_sync
-fi
+
 
 umask 000
 #版本号用于控制非4.8.0.56的emby的用户数据写入，流程不一样。
