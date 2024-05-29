@@ -81,3 +81,4 @@ echo "PRAGMA foreign_keys = ON;" >> $temp_file
 #mv $temp_file /emby/config/media_items_all.sql
 bash -c "$(curl -sSLf https://xy.ggbond.org/xy/itrans_emby_sql.sh)" -s "${temp_file}" "/emby/config/media_items_all.sql"
 chmod 777 /emby/config/*.sql
+read -p 'check'
