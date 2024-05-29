@@ -70,7 +70,7 @@ SQLITE_COMMAND_2="docker run -i --security-opt seccomp=unconfined --rm --net=hos
 SQLITE_COMMAND_3="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/temp/config/data:/emby/config/data -e LANG=C.UTF-8 ailg/ggbond:latest"
 
 if [ "$4" ];then
-	if [[ $(docker ps -a | grep -qE "(^|\s)$IMG_NAME(\s|$)") ]];then
+	if [[ $(docker ps -a | grep -E "(^|\s)$IMG_NAME(\s|$)") ]];then
 		#mount_paths=$(docker inspect $EMBY_NAME \
 		#| jq -r '.[0].Mounts[] | select(.Destination != "/media" and .Destination != "/config" and .Destination != "/etc/nsswitch.conf") | .Destination')
 		#echo $mount_paths
@@ -78,7 +78,7 @@ if [ "$4" ];then
 		docker inspect $IMG_NAME | grep Destination | grep -vE "/config|/media|/etc/" | awk -F\" '{print $4}' > $media_lib/config/mount_paths.txt
 	fi
 else
-	if [[ $(docker ps -a | grep -qE "(^|\s)$EMBY_NAME(\s|$)") ]];then
+	if [[ $(docker ps -a | grep -E "(^|\s)$EMBY_NAME(\s|$)") ]];then
 		#mount_paths=$(docker inspect $EMBY_NAME \
 		#| jq -r '.[0].Mounts[] | select(.Destination != "/media" and .Destination != "/config" and .Destination != "/etc/nsswitch.conf") | .Destination')
 		#echo $mount_paths
@@ -93,12 +93,13 @@ docker stop ${EMBY_NAME}
 sleep 4
 
 #旧数据备份并清除旧数据库
+rm -f /tmp/*.sql
 ${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump UserDatas" > /tmp/emby_user.sql
 ${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump ItemExtradata" > /tmp/emby_library_mediaconfig.sql
 ${SQLITE_COMMAND} /emby_userdata.sh
 
 
-#read -ep "**检查sql"
+read -ep "**检查sql"
 mv  $media_lib/config/data/library.db $media_lib/config/data/library.org.db
 [[ -f $media_lib/config/data/library.db-wal ]] && mv $media_lib/config/data/library.db-wal $media_lib/config/data/library.db-wal.bak
 [[ -f $media_lib/config/data/library.db-shm ]] && mv $media_lib/config/data/library.db-shm $media_lib/config/data/library.db-shm.bak
