@@ -1,4 +1,9 @@
 #!/bin/bash
+# shellcheck shell=bash
+# shellcheck disable=SC2086
+# shellcheck disable=SC1091
+# shellcheck disable=SC2154
+# shellcheck disable=SC2162
 data=$(date +"%Y-%m-%d %H:%M:%S")
 
 function check_start(){
@@ -45,7 +50,8 @@ if [ ! -d $media_lib/config_sync ]; then
 	mkdir $media_lib/config_sync
 fi
 
-umask=000
+umask 000
+#版本号用于控制非4.8.0.56的emby的用户数据写入，流程不一样。
 emby_version=$(docker inspect $EMBY_NAME | grep -E Image | grep -v sha256 | awk -F\" '{ print $4 }' | cut -d: -f2)
 
 local_sha=$(docker inspect -f'{{index .RepoDigests 0}}' ailg/ggbond:latest  |cut -f2 -d:)
@@ -62,12 +68,22 @@ SQLITE_COMMAND="docker run -i --security-opt seccomp=unconfined --rm --net=host 
 SQLITE_COMMAND_2="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/config/data:/emby/config/data -v /tmp/emby_user.sql:/tmp/emby_user.sql  -v /tmp/emby_library_mediaconfig.sql:/tmp/emby_library_mediaconfig.sql -e LANG=C.UTF-8 ailg/ggbond:latest"
 SQLITE_COMMAND_3="docker run -i --security-opt seccomp=unconfined --rm --net=host -v $media_lib/temp/config/data:/emby/config/data -e LANG=C.UTF-8 ailg/ggbond:latest"
 
-if [[ $(docker ps -a | grep -E "(^|\s)$EMBY_NAME(\s|$)") ]];then
-	#mount_paths=$(docker inspect $EMBY_NAME \
-	#| jq -r '.[0].Mounts[] | select(.Destination != "/media" and .Destination != "/config" and .Destination != "/etc/nsswitch.conf") | .Destination')
-	#echo $mount_paths
-	#printf "%s\n" "${mount_paths[@]}" > $media_lib/config/mount_paths.txt
-	docker inspect $EMBY_NAME | grep Destination | grep -vE "/config|/media|/etc/nsswitch.conf" | awk -F\" '{print $4}' > $media_lib/config/mount_paths.txt
+if [ "$4" ];then
+	if [[ $(docker ps -a | grep -qE "(^|\s)$IMG_NAME(\s|$)") ]];then
+		#mount_paths=$(docker inspect $EMBY_NAME \
+		#| jq -r '.[0].Mounts[] | select(.Destination != "/media" and .Destination != "/config" and .Destination != "/etc/nsswitch.conf") | .Destination')
+		#echo $mount_paths
+		#printf "%s\n" "${mount_paths[@]}" > $media_lib/config/mount_paths.txt
+		docker inspect $IMG_NAME | grep Destination | grep -vE "/config|/media|/etc/" | awk -F\" '{print $4}' > $media_lib/config/mount_paths.txt
+	fi
+else
+	if [[ $(docker ps -a | grep -qE "(^|\s)$EMBY_NAME(\s|$)") ]];then
+		#mount_paths=$(docker inspect $EMBY_NAME \
+		#| jq -r '.[0].Mounts[] | select(.Destination != "/media" and .Destination != "/config" and .Destination != "/etc/nsswitch.conf") | .Destination')
+		#echo $mount_paths
+		#printf "%s\n" "${mount_paths[@]}" > $media_lib/config/mount_paths.txt
+		docker inspect $EMBY_NAME | grep Destination | grep -vE "/config|/media|/etc/" | awk -F\" '{print $4}' > $media_lib/config/mount_paths.txt
+	fi
 fi
 curl -s "${EMBY_URL}/Users?api_key=e825ed6f7f8f44ffa0563cddaddce14d"  > /tmp/emby.response
 echo "$data Emby 关闭中 ...."
@@ -108,7 +124,7 @@ else
 			exit 1
 		fi
 	else
-		ERROR "请先配置 ${CONFIG_DIR}/docker_address.txt 后重试"
+		ERROR "请先配置 ${xiaoya_config_dir}/docker_address.txt 后重试"
 		exit 1
 	fi
 fi
@@ -117,38 +133,63 @@ for i in {1..5};do
 	remote_cfg_size=$(curl -sL -D - -o /dev/null --max-time 5 "$xiaoya_addr/d/元数据/config.mp4" | grep "Content-Length" | cut -d' ' -f2)
 	[[ -n $remote_cfg_size ]] && break
 done
-#if [ -f "$media_lib/temp/config.mp4" ];then
-	local_cfg_size=$(du -b "$media_lib/temp/config.mp4" | cut -f1)
-#fi
+local_cfg_size=$(du -b "$media_lib/temp/config.mp4" | cut -f1)
 echo -e "\033[1;33mremote_cfg_size=${remote_cfg_size}\nlocal_cfg_size=${local_cfg_size}\033[0m"
+for i in {1..5};do
+	if [[ -z "${local_cfg_size}" ]] || [[ ! $remote_size == "$local_size" ]] || [[ -f $media_lib/temp/config.mp4.aria2 ]];then
+		echo -e "\033[1;33m正在下载config.mp4……\033[0m"
+		rm -f $media_lib/temp/config.mp4
+		docker run -i \
+		--security-opt seccomp=unconfined \
+		--rm \
+		--net=host \
+		-v $media_lib:/media \
+		-v ${xiaoya_config_dir}:/etc/xiaoya \
+		--workdir=/media/temp \
+		-e LANG=C.UTF-8 \
+		ailg/ggbond:latest \
+		aria2c -o config.mp4 --continue=true -x6 --conditional-get=true --allow-overwrite=true "${xiaoya_addr}/d/元数据/config.mp4"
+		local_cfg_size=$(du -b "$media_lib/temp/config.mp4" | cut -f1)
+		run_7z=true
+	else
+		echo -e "\033[1;33m本地config.mp4与远程文件一样，无需重新下载！\033[0m"
+		run_7z=false
+		break
+	fi
+done
 if [[ -z "${local_cfg_size}" ]] || [[ ! $remote_size == "$local_size" ]] || [[ -f $media_lib/temp/config.mp4.aria2 ]];then
-	echo -e "\033[1;33m正在下载config.mp4……\033[0m"
-	rm -f $media_lib/temp/config.mp4
+	ERROR "config.mp4下载失败，请检查网络，如果token失效或触发阿里风控将小雅alist停止1小时后再打开重试！"
+	exit 1
+fi
+
+if ! "${run_7z}";then
+	echo -e "\033[1;33m远程小雅config未更新，与本地数据一样，是否重新解压本地config.mp4？${NC}"
+	answer=""
+	t=30
+	while [[ -z "$answer" && $t -gt 0 ]]; do
+		printf "\r按Y/y键解压，按N/n退出（%2d 秒后将默认不解压退出）：" $t
+		read -t 1 -n 1 answer
+		t=$((t-1))
+	done
+	[[ "${answer}" == [Yy] ]] && run_7z=true
+fi
+if "${run_7z}";then
+	rm -rf $media_lib/config
 	docker run -i \
 	--security-opt seccomp=unconfined \
 	--rm \
 	--net=host \
-	-v ${media_lib}:/media \
-	-v ${xiaoya_config_dir}:/etc/xiaoya \
-	--workdir=/media/temp \
-	-e LANG=C.UTF-8 \
-	ailg/ggbond:latest \
-	aria2c -o config.mp4 --continue=true -x6 --conditional-get=true --allow-overwrite=true "${xiaoya_addr}/d/元数据/config.mp4"
-else
-	echo -e "\033[1;33m本地config.mp4与远程文件一样，无需重新下载！\033[0m"
-fi
-# 在temp下面解压，最终新config文件路径为temp/config
-docker run -i \
-	--security-opt seccomp=unconfined \
-	--rm \
-	--net=host \
-	-v ${media_lib}:/media \
+	-v $media_lib:/media \
 	-v ${xiaoya_config_dir}:/etc/xiaoya \
 	--workdir=/media/temp \
 	-e LANG=C.UTF-8 \
 	ailg/ggbond:latest \
 	7z x -aoa -bb1 -mmt=16 config.mp4
-echo -e "下载解压元数据完成"
+	echo -e "\033[1;33m下载解压元数据完成\033[0m"
+else
+	echo -e "\033[1;33m远程config与本地一样，未执行解压/更新！\033[0m"
+	exit 0
+fi
 
 echo "$data 检查同步数据库完整性..."
 sleep 4
@@ -169,13 +210,13 @@ if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" | grep Cha
 	echo -e "\033[1;33m正在复制新的config数据，请耐心等候……\033[0m"
 	cp -rf $media_lib/temp/config/cache/* $media_lib/config/cache/
 	cp -rf $media_lib/temp/config/metadata/* $media_lib/config/metadata/
-	echo "$data 复制新的 config 至 emby数据库 完成"
+	echo "$data 复制新的缓存及元数据至 emby数据库 完成！"
 	
 	#chmod -R 777 $media_lib/config/data $media_lib/config/cache $media_lib/config/metadata
 	
 	echo "$data Emby 重启中 ...."
 	[ -n "$4" ] && docker start "${IMG_NAME}" || docker start "${EMBY_NAME}"
-	sleep 20
+	sleep 3
 else
 	echo -e "\033[35m$data 同步数据库不完整，跳过复制...\033[0m"
 	echo "$data 同步失败，正在恢复备份数据……"
@@ -193,7 +234,7 @@ if [[ ! $emby_version == 4.8.0.56 ]];then
     sleep 10
     ${SQLITE_COMMAND} bash -c "sqlite3 /emby/config/data/library.db < /emby/config/media_items_all.sql"
     [ -n "$4" ] && docker start "${IMG_NAME}" || docker start "${EMBY_NAME}"
-    sleep 10
+    sleep 3
     check_start
 fi
 rm -f $media_lib/config/*.sql
@@ -208,23 +249,23 @@ USER_COUNT=$(${EMBY_COMMAND} jq '.[].Name' /tmp/emby.response |wc -l)
 
 for(( i=0 ; i <$USER_COUNT ; i++ ))
 do
-	if [[ "$USER_COUNT" > 30 ]]; then
+	if [[ "$USER_COUNT" -gt 30 ]]; then
 		exit
 	fi
 	#<<<在绿联中不支持，改用下面的写法通用性可能更好。
     #read -r id <<< "$(${EMBY_COMMAND} jq -r ".[$i].Id" /tmp/emby.response |tr -d [:space:])"
     read -r id <<EOF
-$(echo "$(${EMBY_COMMAND} jq -r ".[$i].Id" /tmp/emby.response | tr -d [:space:])")
+$(${EMBY_COMMAND} jq -r ".[$i].Id" /tmp/emby.response | tr -d "[:space:]")
 EOF
     #下面这个命令将id替换成jellyfin惯用的形式，不知道是否某些版本的emby要求这种格式的id来请求更新策略，留着备用。
     #id=$(echo $id | sed 's/\(........\)\(....\)\(....\)\(....\)\(............\)/\1-\2-\3-\4-\5/')
 	#read -r name <<< "$(${EMBY_COMMAND} jq -r ".[$i].Name" /tmp/emby.response |tr -d [:space:])"
 	read -r name <<EOF
-$(echo "$(${EMBY_COMMAND} jq -r ".[$i].Name" /tmp/emby.response | tr -d [:space:])")
+$(${EMBY_COMMAND} jq -r ".[$i].Name" /tmp/emby.response | tr -d "[:space:]")
 EOF
 	#read -r policy <<< "$(${EMBY_COMMAND} jq -r ".[$i].Policy | to_entries | from_entries | tojson" /tmp/emby.response |tr -d [:space:])"
 	read -r policy <<EOF
-$(echo "$(${EMBY_COMMAND} jq -r ".[$i].Policy | to_entries | from_entries | tojson" /tmp/emby.response |tr -d [:space:])")
+$(${EMBY_COMMAND} jq -r ".[$i].Policy | to_entries | from_entries | tojson" /tmp/emby.response |tr -d "[:space:]")
 EOF
 	USER_URL_2="${EMBY_URL}/Users/$id/Policy?api_key=e825ed6f7f8f44ffa0563cddaddce14d"
     	status_code=$(curl -s -w "%{http_code}" -H "Content-Type: application/json" -X POST -d "$policy" "$USER_URL_2")
