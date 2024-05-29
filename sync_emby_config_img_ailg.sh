@@ -98,7 +98,7 @@ ${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump UserDatas" > /tmp/
 ${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump ItemExtradata" > /tmp/emby_library_mediaconfig.sql
 ${SQLITE_COMMAND} /emby_userdata.sh
 
-
+echo -e "$EMBY_NAME\n$media_lib\n$EMBY_URL\n$xiaoya_config_dir" 
 read -ep "**检查sql"
 mv  $media_lib/config/data/library.db $media_lib/config/data/library.org.db
 [[ -f $media_lib/config/data/library.db-wal ]] && mv $media_lib/config/data/library.db-wal $media_lib/config/data/library.db-wal.bak
@@ -214,7 +214,9 @@ if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" | grep Cha
 	cp -rf $media_lib/temp/config/metadata/* $media_lib/config/metadata/
 	echo "$data 复制新的缓存及元数据至 emby数据库 完成！"
 	
-	#chmod -R 777 $media_lib/config/data $media_lib/config/cache $media_lib/config/metadata
+	echo -e "\033[32m$data正在更新数据库权限\033[0m"
+	chmod -R 777 $media_lib/config/data $media_lib/config/cache $media_lib/config/metadata
+	echo -e "\033[32m$data数据库权限更新完成！\033[0m"
 	
 	echo "$data Emby 重启中 ...."
 	[ -n "$4" ] && docker start "${IMG_NAME}" || docker start "${EMBY_NAME}"
