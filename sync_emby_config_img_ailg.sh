@@ -163,7 +163,7 @@ if [[ -z "${local_cfg_size}" ]] || [[ ! $remote_size == "$local_size" ]] || [[ -
 fi
 
 if ! "${run_7z}";then
-	echo -e "\033[1;33m远程小雅config未更新，与本地数据一样，是否重新解压本地config.mp4？${NC}"
+	echo -e "\033[1;33m远程小雅config未更新，与本地数据一样，是否重新解压本地config.mp4？\033[0m"
 	answer=""
 	t=30
 	while [[ -z "$answer" && $t -gt 0 ]]; do
@@ -174,7 +174,7 @@ if ! "${run_7z}";then
 	[[ "${answer}" == [Yy] ]] && run_7z=true
 fi
 if "${run_7z}";then
-	rm -rf $media_lib/config
+	rm -rf $media_lib/config/cache/* $media_lib/config/metadata/* $media_lib/config/data/library.db*
 	docker run -i \
 	--security-opt seccomp=unconfined \
 	--rm \
