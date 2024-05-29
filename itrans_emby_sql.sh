@@ -9,9 +9,7 @@ while IFS= read -r line
 do
     # 检查行是否包含特定的表名
     if [[ $line == *"AncestorIds2"* ]]; then
-        echo $line | awk -F'[(),]' '{if ($3 < 10) {$2=$2+1000000} else {$2=$2+1000000};printf "%s(%d,%d,%d);\n", $1, $2, $3, $4}' >&3
-        echo $line | awk -F'[(),]' '{if ($3 < 10) {$2=$2+1000000} else {$2=$2+1000000;$3=$3+1000000};printf "%s(%d,%d,%d);\n", $1, $2, $3, $4}'
-
+        echo $line | awk -F'[(),]' '{if ($3 < 10) {$2=$2+1000000} else {$2=$2+1000000;$3=$3+1000000};printf "%s(%d,%d,%d);\n", $1, $2, $3, $4}' >&3
     elif [[ $line == *"ItemLinks2"* ]]; then
         echo $line | awk -F'[(,)]' '{if ($4 >= $2+1) {$4=$4+1000000}; $2=$2+1000000; printf "%s(%d,%d,%d,%d);\n", $1, $2, $3, $4, $5}' >&3
     elif [[ $line == *"MediaStreams2"* ]]; then
