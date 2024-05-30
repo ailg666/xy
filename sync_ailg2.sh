@@ -40,11 +40,18 @@ done
 index=$((index+1))
 done
 
+#可以通过以下方法获取小雅实时媒体库id，以下library.db指不包含用户媒体库的数据库，需要先提前有这个文件才能用以下方法获取。
+exclude_ids=$(sqlite3 ./library.db "SELECT ItemId FROM ItemExtradata;")
+exclude_ids_pattern=$(echo $exclude_ids | sed 's/ /|/g')
+ids=$(sqlite3 $db_path "SELECT ItemId FROM ItemExtradata" | grep -v -E "$exclude_ids_pattern")
+#将ids字符串转换为数组
+ids=(${ids})
+
 exclude_ids=(113247 111388 113755 108733 77300 1425692 112823 113637 115892 112652 112908 112521 111752 394560 112395 740118 15569 118566 117147 1649163 1616971 394489 118322 1425690 589279 1316551 539213 114140 775355 949309 118860 118755 1613320)
 IFS='|'
 exclude_ids_pattern="^($(echo "${exclude_ids[*]}"))$"
 ids=$(sqlite3 $db_path "SELECT ItemId FROM ItemExtradata" | grep -v -E "$exclude_ids_pattern")
-echo $ids ${ids[@]}
+echo ${ids[@]}
 unset IFS
 
 tables=("AncestorIds2" "ItemLinks2" "MediaStreams2" "MediaItems")
