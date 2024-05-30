@@ -34,7 +34,7 @@ do
             split(a[1],b,",");
             if (b[4] > 10) b[4]=b[4]+1000000;
             b[1]=b[1]+1000000;
-            fmt = ("%d,%s,%d,%d,%s,%d,%d,%d,%d,%d,%d,%f,%s,%d,%d,%s,%s,%s,%s,%s,%d,%s,%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%s,%d,%d,%f,%s,%s,%s,%s,%s,%d,%d,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%d,%d,%s,%d,%s,%d,%d,%d,%d,%d,%s,%s,%d");
+            fmt = ("%d,%s,%d,%d,%s,%d,%d,%d,%d,%d,%d,%f,%s,%d,%d,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%d,%d,%s,%s,%d,%d,%d,%s,%d,%d,%f,%s,%s,%d,%s,%s,%d,%d,%s,%s,%s,%s,%s,%d,%s,%s,%d,%s,%s,%s,%s,%d,%d,%d,%d,%d,%d,%d,%s,%s,%d");
             split(fmt, f, ",");
             printf "%sVALUES(", $1;
             for(i=1;i<length(b);i++) {

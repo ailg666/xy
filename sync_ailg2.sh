@@ -78,6 +78,8 @@ temp_file="/tmp/temp.sql"
 echo "PRAGMA foreign_keys = OFF;" > $temp_file
 cat /emby/config/*.sql >> $temp_file
 echo "PRAGMA foreign_keys = ON;" >> $temp_file
+sed -E 's/replace\(//g;s/,'\''\\n'\'',char\(10\)\)//g' $temp_file > ${temp_file%.sql}_1.sql
+temp_file="/tmp/temp_1.sql"
 #mv $temp_file /emby/config/media_items_all.sql
 bash -c "$(curl -sSLf https://xy.ggbond.org/xy/itrans_emby_sql.sh)" -s "${temp_file}" "/emby/config/media_items_all.sql"
 chmod 777 /emby/config/*.sql
