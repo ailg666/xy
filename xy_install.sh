@@ -298,6 +298,17 @@ get_emby_status(){
     fi
 }
 
+update_ggbond(){
+	local_sha=$(docker inspect -f'{{index .RepoDigests 0}}' ailg/ggbond:latest  |cut -f2 -d:)
+	remote_sha=$(curl -s "https://hub.docker.com/v2/repositories/ailg/alist/tags/hostmode" | grep -oE '[0-9a-f]{64}' | tail -1)
+	if [ ! "$local_sha" == "$remote_sha" ]; then
+		docker rmi ailg/ggbond:latest
+		for i in {1..3};do
+			docker pull ailg/ggbond:latest && break
+		done
+		[ $? -ne 0 ] && ERROR "ailg/ggbond镜像更新失败，请检查网络后重试，程序退出！" && exit 1
+	fi
+}
 
 function user_select1(){
 	if [[ $st_alist =~ "已安装" ]];then
@@ -572,15 +583,7 @@ function user_select4(){
 		[ "$local_size" -lt "$remote_size" ] && down_img
 	fi
 	
-	local_sha=$(docker inspect -f'{{index .RepoDigests 0}}' ailg/ggbond:latest  |cut -f2 -d:)
-	remote_sha=$(curl -s "https://hub.docker.com/v2/repositories/ailg/alist/tags/hostmode" | grep -oE '[0-9a-f]{64}' | tail -1)
-	if [ ! "$local_sha" == "$remote_sha" ]; then
-		docker rmi ailg/ggbond:latest
-		for i in {1..3};do
-			docker pull ailg/ggbond:latest && break
-		done
-		[ $? -ne 0 ] && ERROR "ailg/ggbond镜像更新失败，请检查网络后重试，程序退出！" && exit 1
-	fi
+	update_ggbond
 
 	echo "$local_size $remote_size $image_dir/$emby_ailg $media_dir"
 	mount | grep $media_dir && umount $media_dir
@@ -802,6 +805,7 @@ get_img_path(){
 mount_img(){
 	declare -ga img_order
 	get_emby_status > /dev/null
+	update_ggbond
 	if [ ! -f /usr/bin/mount_ailg ];then
 		docker cp xiaoya_jf:/var/lib/mount_ailg "/usr/bin/mount_ailg"
 		chmod 777 /usr/bin/mount_ailg
