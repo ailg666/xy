@@ -12,6 +12,12 @@ echo ${mount_paths[@]}
 
 echo "正在转换数据库……"
 db_path="/emby/config/data/library.db"
+for mount_path in "${mount_paths[@]}"; do
+    item_id=$(sqlite3 "$db_path" "SELECT ItemId FROM ItemExtradata WHERE json_extract(Value, '$.PathInfos[0].Path') = '$mount_path';")
+    if (( item_id > 2200000 )); then
+        mount_paths=("${mount_paths[@]/$mount_path}")
+    fi
+done
 index=0
 for path in "${mount_paths[@]}"; do
     output_file="/emby/config/MediaItems_$index.sql"
@@ -40,12 +46,13 @@ done
 index=$((index+1))
 done
 
-#可以通过以下方法获取小雅实时媒体库id，以下library.db指不包含用户媒体库的数据库，需要先提前有这个文件才能用以下方法获取。
-exclude_ids=$(sqlite3 ./library.db "SELECT ItemId FROM ItemExtradata;")
-exclude_ids_pattern=$(echo $exclude_ids | sed 's/ /|/g')
-ids=$(sqlite3 $db_path "SELECT ItemId FROM ItemExtradata" | grep -v -E "$exclude_ids_pattern")
-#将ids字符串转换为数组
-ids=(${ids})
+# #可以通过以下方法获取小雅实时媒体库id，以下library.db指不包含用户媒体库的数据库，需要先提前有这个文件才能用以下方法获取。
+# exclude_ids=$(sqlite3 ./library.db "SELECT ItemId FROM ItemExtradata;")
+# exclude_ids_pattern=$(echo $exclude_ids | sed 's/ /|/g')
+# ids=$(sqlite3 $db_path "SELECT ItemId FROM ItemExtradata" | grep -v -E "$exclude_ids_pattern")
+# #将ids字符串转换为数组
+# ids=(${ids})
+# echo ${ids[@]}
 
 exclude_ids=(113247 111388 113755 108733 77300 1425692 112823 113637 115892 112652 112908 112521 111752 394560 112395 740118 15569 118566 117147 1649163 1616971 394489 118322 1425690 589279 1316551 539213 114140 775355 949309 118860 118755 1613320)
 IFS='|'
@@ -90,4 +97,3 @@ temp_file="/tmp/temp_1.sql"
 #mv $temp_file /emby/config/media_items_all.sql
 bash -c "$(curl -sSLf https://xy.ggbond.org/xy/itrans_emby_sql.sh)" -s "${temp_file}" "/emby/config/media_items_all.sql"
 chmod 777 /emby/config/*.sql
-read -p 'check'

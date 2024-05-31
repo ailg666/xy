@@ -99,7 +99,7 @@ ${SQLITE_COMMAND} sqlite3 /emby/config/data/library.db ".dump ItemExtradata" > /
 ${SQLITE_COMMAND} /emby_userdata.sh
 
 echo -e "$EMBY_NAME\n$media_lib\n$EMBY_URL\n$xiaoya_config_dir" 
-read -ep "**检查sql"
+#read -ep "**检查sql"
 mv  $media_lib/config/data/library.db $media_lib/config/data/library.org.db
 [[ -f $media_lib/config/data/library.db-wal ]] && mv $media_lib/config/data/library.db-wal $media_lib/config/data/library.db-wal.bak
 [[ -f $media_lib/config/data/library.db-shm ]] && mv $media_lib/config/data/library.db-shm $media_lib/config/data/library.db-shm.bak
@@ -176,7 +176,7 @@ if ! "${run_7z}";then
 	[[ "${answer}" == [Yy] ]] && run_7z=true
 fi
 if "${run_7z}";then
-	rm -rf $media_lib/config/cache/* $media_lib/config/metadata/* $media_lib/config/data/library.db*
+	rm -rf $media_lib/config/cache/* $media_lib/config/metadata/* $media_lib/config/data/library.db $media_lib/config/data/library.db-wal $media_lib/config/data/library.db-shm
 	docker run -i \
 	--security-opt seccomp=unconfined \
 	--rm \
@@ -195,7 +195,7 @@ fi
 
 echo "$data 检查同步数据库完整性..."
 sleep 4
-#read -ep "check sql\&library!"
+
 if ${SQLITE_COMMAND_3} sqlite3 /emby/config/data/library.db ".tables" | grep Chapters3 > /dev/null ; then
 	
 	echo -e "\033[32m$data 同步数据库数据完整\033[0m"
@@ -274,7 +274,7 @@ EOF
 	USER_URL_2="${EMBY_URL}/Users/$id/Policy?api_key=e825ed6f7f8f44ffa0563cddaddce14d"
     	status_code=$(curl -s -w "%{http_code}" -H "Content-Type: application/json" -X POST -d "$policy" "$USER_URL_2")
         echo $status_code
-        # read -ep "check status"
+
     	if [ "$status_code" == "204" ]; then
         	echo "成功更新 $name 用户Policy"
     	else

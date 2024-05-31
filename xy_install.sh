@@ -287,7 +287,7 @@ get_emby_status(){
             emby_list[$container_name]=$host_path
             emby_order+=($container_name)
         fi
-    done < <(docker ps -a | grep -E 'emby\/embyserver|amilys\/embyserver' | awk '{print $1}')
+    done < <(docker ps -a | grep -E 'emby/embyserver|amilys/embyserver' | awk '{print $1}')
 
     if [ ${#emby_list[@]} -ne 0 ]; then
         echo -e "\033[1;37m默认会关闭以下您已安装的小雅emby容器，并删除名为emby的容器！\033[0m"
@@ -556,7 +556,7 @@ function user_select4(){
 		remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/emby/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tail -n 1 | tr -d '\r')
 		[[ -n $remote_size ]] && break
 	done
-	if [[ $remote_size -lt 10000 ]];then
+	if [[ $remote_size -lt 100000 ]];then
         ERROR "获取文件大小失败，请检查网络后重新运行脚本！"
         echo -e "${Yellow}排障步骤：\n1、检查5678打开alist能否正常播放（排除token失效和风控！）"
         echo -e "${Yellow}2、检查alist配置目录的docker_address.txt是否正确指向你的alist访问地址，\n   应为宿主机+5678端口，示例：http://192.168.2.3:5678"
@@ -572,6 +572,16 @@ function user_select4(){
 		[ "$local_size" -lt "$remote_size" ] && down_img
 	fi
 	
+	local_sha=$(docker inspect -f'{{index .RepoDigests 0}}' ailg/ggbond:latest  |cut -f2 -d:)
+	remote_sha=$(curl -s "https://hub.docker.com/v2/repositories/ailg/alist/tags/hostmode" | grep -oE '[0-9a-f]{64}' | tail -1)
+	if [ ! "$local_sha" == "$remote_sha" ]; then
+		docker rmi ailg/ggbond:latest
+		for i in {1..3};do
+			docker pull ailg/ggbond:latest && break
+		done
+		[ $? -ne 0 ] && ERROR "ailg/ggbond镜像更新失败，请检查网络后重试，程序退出！" && exit 1
+	fi
+
 	echo "$local_size $remote_size $image_dir/$emby_ailg $media_dir"
 	mount | grep $media_dir && umount $media_dir
     if [ "$local_size" -eq "$remote_size" ];then
@@ -748,10 +758,11 @@ happy_emby(){
 					INFO "旧的${happy_name}容器已删除！"
 					INFO "开始安装小雅emby……"
 					if command -v ifconfig > /dev/null 2>&1; then
-						localip=$(ifconfig -a|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. | grep -v inet6 | awk '{print $2}'|tr -d "addr:"|head -n1)
+						localip=$(ifconfig -a|grep inet|grep -vE "172.17|127.0|169.|inet6"| awk '{print $2}'|tr -d "addr:"|head -n1)
 					else
-						localip=$(ip address|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. |grep -v inet6|awk '{print $2}'|tr -d "addr:"|head -n1|cut -f1 -d"/")
+						localip=$(ip address|grep inet|grep -vE "172.17|127.0|169.|inet6"|awk '{print $2}'|tr -d "addr:"|head -n1|cut -f1 -d"/")
 					fi
+					xiaoya_host="127.0.0.1"
 					if ! [[ -f /etc/nsswitch.conf ]];then
 						echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf	
 					fi
@@ -761,7 +772,7 @@ happy_emby(){
 					--device=/dev/dri \
                     --user 0:0 \
 					--net=host \
-					--privileged --add-host="xiaoya.host:$localip" --restart always ${emby_image}
+					--privileged --add-host="xiaoya.host:$xiaoya_host" --restart always ${emby_image}
 					break
 				else
 					ERROR "您输入的序号无效，请输入一个在 1 到 ${#img_order[@]} 之间的数字。"
@@ -818,12 +829,13 @@ mount_img(){
                     umount /dev/loop7 > /dev/null 2>&1
                     losetup -d /dev/loop7 > /dev/null 2>&1
                     mount | grep -qF "${img_mount}" && umount "${img_mount}"
+					sleep 3
                     docker start ${emby_name}
                     mount /dev/loop7 ${img_mount}
                     if [ $? -eq 0 ];then
                         INFO "已将${Yellow}${img_path}${NC}挂载到${Yellow}${img_mount}${NC}目录！" && WARN "如您想操作小雅config数据的同步或更新，请先手动关闭${Yellow}${emby_name}${NC}容器！"
                     else
-                        ERROR "挂载失败，${Yellow}${img_mount}${NC}挂载目录非空或已经挂载，请重启设备后重试！" || exit 1
+                        ERROR "挂载失败，${Yellow}${img_mount}${NC}挂载目录非空或已经挂载，请重启设备后重试！" && exit 1
                     fi
                     break
                 elif [ "${img_select}" -eq 0 ];then
@@ -847,6 +859,162 @@ mount_img(){
     fi
 }
 
+sync_config(){
+	if [[ $st_alist =~ "未安装" ]];then
+		ERROR "请先安装小雅ALIST老G版，再执行本安装！"
+		main
+		return
+	fi
+	umask 000
+	check_env
+	get_config_path
+	mount_img || exit 1
+	#docker stop ${emby_name}
+	if [ "${img_select}" -eq 0 ];then
+		get_emby_image
+	else
+		emby_name=${img_order[$((img_select-1))]}
+		emby_image=$(docker inspect -f '{{.Config.Image}}' "${emby_name}")
+	fi
+	if command -v ifconfig > /dev/null 2>&1; then
+		localip=$(ifconfig -a|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. | grep -v inet6 | awk '{print $2}'|tr -d "addr:"|head -n1)
+	else
+		localip=$(ip address|grep inet|grep -v 172.17 | grep -v 127.0 | grep -v 169. |grep -v inet6|awk '{print $2}'|tr -d "addr:"|head -n1|cut -f1 -d"/")
+	fi
+	
+	echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
+	echo -e "\n"
+	echo -e "\033[1;32m1、小雅config干净重装/更新（config数据已损坏请选此项！）\033[0m"
+	echo -e "\n"
+	echo -e "\033[1;35m2、小雅config保留重装/更新（config数据未损坏想保留用户数据及自己媒体库可选此项！）\033[0m"
+	echo -e "\n"
+	echo -e "——————————————————————————————————————————————————————————————————————————————————"
+
+	read -ep "请输入您的选择（1-2）；" sync_select
+	if [[ "$sync_select" == "1" ]];then
+		echo -e "测试xiaoya的联通性..."
+		if curl -siL http://127.0.0.1:5678/d/README.md | grep -v 302 | grep -q "x-oss-"; then
+			xiaoya_addr="http://127.0.0.1:5678"
+		elif curl -siL http://${docker0}:5678/d/README.md | grep -v 302 | grep -q "x-oss-"; then
+			xiaoya_addr="http://${docker0}:5678"
+		else
+			if [ -s $config_dir/docker_address.txt ]; then
+				docker_address=$(head -n1 $config_dir/docker_address.txt)
+				if curl -siL http://${docker_address}:5678/d/README.md | grep -v 302 | grep "x-oss-"; then
+					xiaoya_addr=${docker_address}
+				else
+					ERROR "请检查xiaoya是否正常运行后再试"
+					exit 1
+				fi
+			else
+				ERROR "请先配置 $config_dir/docker_address.txt 后重试"
+				exit 1
+			fi
+		fi
+		for i in {1..5};do
+			remote_cfg_size=$(curl -sL -D - -o /dev/null --max-time 5 "$xiaoya_addr/d/元数据/config.mp4" | grep "Content-Length" | cut -d' ' -f2)
+			[[ -n $remote_cfg_size ]] && break
+		done
+		local_cfg_size=$(du -b "${img_mount}/temp/config.mp4" | cut -f1)
+		echo -e "\033[1;33mremote_cfg_size=${remote_cfg_size}\nlocal_cfg_size=${local_cfg_size}\033[0m"
+		for i in {1..5};do
+			if [[ -z "${local_cfg_size}" ]] || [[ ! $remote_size == "$local_size" ]] || [[ -f ${img_mount}/temp/config.mp4.aria2 ]];then
+				echo -e "\033[1;33m正在下载config.mp4……\033[0m"
+				rm -f ${img_mount}/temp/config.mp4
+				docker run -i \
+				--security-opt seccomp=unconfined \
+				--rm \
+				--net=host \
+				-v ${img_mount}:/media \
+				-v $config_dir:/etc/xiaoya \
+				--workdir=/media/temp \
+				-e LANG=C.UTF-8 \
+				ailg/ggbond:latest \
+				aria2c -o config.mp4 --continue=true -x6 --conditional-get=true --allow-overwrite=true "${xiaoya_addr}/d/元数据/config.mp4"
+				local_cfg_size=$(du -b "${img_mount}/temp/config.mp4" | cut -f1)
+				run_7z=true
+			else
+				echo -e "\033[1;33m本地config.mp4与远程文件一样，无需重新下载！\033[0m"
+				run_7z=false
+				break
+			fi
+		done
+		if [[ -z "${local_cfg_size}" ]] || [[ ! $remote_size == "$local_size" ]] || [[ -f ${img_mount}/temp/config.mp4.aria2 ]];then
+			ERROR "config.mp4下载失败，请检查网络，如果token失效或触发阿里风控将小雅alist停止1小时后再打开重试！"
+			exit 1
+		fi
+
+		#rm -rf ${img_mount}/config/cache/* ${img_mount}/config/metadata/* ${img_mount}/config/data/library.db*
+		#7z x -aoa -bb1 -mmt=16 /media/temp/config.mp4 -o/media/config/data/ config/data/library.db*
+		#7z x -aoa -bb1 -mmt=16 /media/temp/config.mp4 -o/media/config/cache/ config/cache/*
+		#7z x -aoa -bb1 -mmt=16 /media/temp/config.mp4 -o/media/config/metadata/ config/metadata/* 
+		if ! "${run_7z}";then
+			echo -e "\033[1;33m远程小雅config未更新，与本地数据一样，是否重新解压本地config.mp4？${NC}"
+			answer=""
+			t=30
+			while [[ -z "$answer" && $t -gt 0 ]]; do
+				printf "\r按Y/y键解压，按N/n退出（%2d 秒后将默认不解压退出）：" $t
+				read -t 1 -n 1 answer
+				t=$((t-1))
+			done
+			[[ "${answer}" == [Yy] ]] && run_7z=true
+		fi
+		if "${run_7z}";then
+			rm -rf ${img_mount}/config
+			docker run -i \
+			--security-opt seccomp=unconfined \
+			--rm \
+			--net=host \
+			-v ${img_mount}:/media \
+			-v $config_dir:/etc/xiaoya \
+			--workdir=/media \
+			-e LANG=C.UTF-8 \
+			ailg/ggbond:latest \
+			7z x -aoa -bb1 -mmt=16 /media/temp/config.mp4
+			echo -e "下载解压元数据完成"
+			INFO "小雅config安装完成！"
+			docker start "${emby_name}"
+		else
+			INFO "远程config与本地一样，未执行解压/更新！"
+			exit 0
+		fi
+
+	elif [[ "$sync_select" == "2" ]];then
+		! docker ps | grep -q "${emby_name}" && ERROR "${emby_name}未正常启动，如果数据库已损坏请重新运行脚本，选择干净安装！" && exit 1
+		xiaoya_host="127.0.0.1"
+		# docker run -d --name emby-sync -v /etc/nsswitch.conf:/etc/nsswitch.conf \
+		# -v ${img_mount}/xiaoya:/media \
+		# -v ${img_mount}/config:/config \
+		# --user 0:0 \
+		# --net=host \
+		# --privileged --add-host="xiaoya.host:$xiaoya_host" --restart always $emby_image
+		echo -e "\n"
+		echo -e "\033[1;31m同步进行中，需要较长时间，请耐心等待，直到出命令行提示符才算结束！\033[0m"
+		[ -f "/tmp/sync_emby_config_ailg.sh" ] && rm -f /tmp/sync_emby_config_ailg.sh
+		for i in {1..3};do
+			curl -sSfL -o /tmp/sync_emby_config_ailg.sh https://xy.ggbond.org/xy/sync_emby_config_img_ailg.sh
+			grep -q "返回错误" /tmp/sync_emby_config_ailg.sh && break
+		done
+		grep -q "返回错误" /tmp/sync_emby_config_ailg.sh || { echo -e "文件获取失败，检查网络或重新运行脚本！"; rm -f /tmp/sync_emby_config_ailg.sh; exit 1; }
+		chmod 777 /tmp/sync_emby_config_ailg.sh
+		bash -c "$(cat /tmp/sync_emby_config_ailg.sh)" -s ${img_mount} $config_dir "${emby_name}" | tee /tmp/cron.log
+		echo -e "\n"
+		echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
+		INFO "安装完成"
+		WARN "已在原目录（config/data）为您创建library.db的备份文件library.org.db"
+		echo -e "\n"
+		WARN "只有emby启动报错，或启动后媒体库丢失才需执行以下操作："
+		echo -e "\033[1;35m1、先停止容器，检查emby媒体库目录的config/data目录中是否有library.org.db备份文件！"
+		echo -e "2、如果没有，说明备份文件已自动恢复，原数据启动不了需要排查其他问题，或重装config目录！"
+		echo -e "3、如果有，继续执行3-5步，先删除library.db/library.db-shm/library.db-wal三个文件！"
+		echo -e "4、将library.org.db改名为library.db，library.db-wal.bak改名为library.db-wal（没有此文件则略过）！"
+		echo -e "5、将library.db-shm.bak改名为library.db-shm（没有此文件则略过），重启emby容器即可恢复原数据！\033[0m"
+		echo -e "——————————————————————————————————————————————————————————————————————————————————"
+	else
+		ERROR "您的输入有误，程序退出" && exit 1
+	fi
+}	
+
 user_selecto(){
 	while :; do
 		clear
@@ -857,6 +1025,8 @@ user_selecto(){
 		echo -e "\033[1;35m2、更换开心版小EMBY\033[0m"
 		echo -e "\n"
         echo -e "\033[1;32m3、挂载老G速装版镜像\033[0m"
+		echo -e "\n"
+		echo -e "\033[1;32m4、老G速装版镜像重装/同步config\033[0m"
 		echo -e "\n"
 		echo -e "——————————————————————————————————————————————————————————————————————————————————"
 		read -ep "请输入您的选择（1-2，按b返回上级菜单或按q退出）；" fo_select
@@ -870,6 +1040,9 @@ user_selecto(){
           3)
             mount_img
             break ;;
+		  4)
+            sync_config
+            break ;;			
 		  [Bb])
 			clear
 			main
