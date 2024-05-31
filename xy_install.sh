@@ -813,6 +813,10 @@ mount_img(){
 				name=${img_order[$index]}
 				printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index+1)) $name ${emby_list[$name]}
 			done
+			if [ ! -f /usr/bin/mount_ailg ];then
+				docker cp xiaoya_jf:/var/lib/mount_ailg "/usr/bin/mount_ailg"
+				chmod 777 /usr/bin/mount_ailg
+			fi   
             printf "[ 0 ] \033[1;33m手动输入需要挂载的老G速装版镜像的完整路径\n\033[0m"
 			while :;do
 				read -ep "输入序号：" img_select
