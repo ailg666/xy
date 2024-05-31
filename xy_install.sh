@@ -603,7 +603,7 @@ function user_select4(){
 	crontab /tmp/cronjob.tmp
 
     if [ ! -f /usr/bin/mount_ailg ];then
-        docker cp xiaoya_jf:/var/lib/mount_ailg "$image_dir/"
+        docker cp xiaoya_jf:/var/lib/mount_ailg "/usr/bin/mount_ailg"
         chmod 777 /usr/bin/mount_ailg
     fi   
 
