@@ -1022,7 +1022,7 @@ user_selecto(){
 		echo -e "\n"
 		echo -e "\033[1;32m1、卸载小雅emby老G速装版\033[0m"
 		echo -e "\n"
-		echo -e "\033[1;32m2、更换开心版小EMBY\033[0m"
+		echo -e "\033[1;32m2、更换开心版小雅EMBY\033[0m"
 		echo -e "\n"
         echo -e "\033[1;32m3、挂载老G速装版镜像\033[0m"
 		echo -e "\n"
