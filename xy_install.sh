@@ -762,7 +762,7 @@ happy_emby() {
     if [ ${#emby_list[@]} -ne 0 ]; then
         for op_emby in "${!emby_list[@]}"; do
             if docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' "${op_emby}" | grep -qE "\.img /media\.img"; then
-                img_order+=(${op_emby})
+                img_order+=("${op_emby}")
             fi
         done
         if [ ${#img_order[@]} -ne 0 ]; then
@@ -779,11 +779,6 @@ happy_emby() {
                     docker stop "${happy_name}" && docker rm "${happy_name}"
                     INFO "旧的${happy_name}容器已删除！"
                     INFO "开始安装小雅emby……"
-                    if command -v ifconfig > /dev/null 2>&1; then
-                        localip=$(ifconfig -a | grep inet | grep -vE "172.17|127.0|169.|inet6" | awk '{print $2}' | sed 's/addr://' | head -n1)
-                    else
-                        localip=$(ip address | grep inet | grep -vE "172.17|127.0|169.|inet6" | awk '{print $2}' | sed 's/addr://' | head -n1 | cut -f1 -d"/")
-                    fi
                     xiaoya_host="127.0.0.1"
                     if ! [[ -f /etc/nsswitch.conf ]]; then
                         echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf
