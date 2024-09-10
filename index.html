@@ -10,32 +10,33 @@
             line-height: 1.6;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            background-color: #121212;
+            color: #e0e0e0;
         }
         .container {
             max-width: 900px;
             margin: auto;
-            background: #fff;
+            background: #1e1e1e;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
         }
-        h1 {
+        h1, h2 {
             text-align: center;
-            color: #333;
-            margin-bottom: 20px;
+            color: #ffffff;
         }
         p {
             margin: 10px 0;
-            color: #555;
+            color: #b0b0b0;
         }
         code {
-            background: #eaeaea;
+            background: #333;
             padding: 2px 4px;
             border-radius: 4px;
             display: inline-block;
             margin: 10px 0;
             position: relative;
+            color: #e0e0e0;
         }
         .copy-button {
             background-color: #3498db;
@@ -76,7 +77,7 @@
             text-align: center;
         }
         img {
-            max-width: 100%;
+            max-width: 200px;
             height: auto;
             border-radius: 8px;
         }
@@ -92,9 +93,9 @@
             align-items: center;
             padding: 10px;
             margin: 0 10px;
-            background: #f9f9f9;
+            background: #2c2c2c;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
         }
         .card img {
             max-width: 100%;
@@ -103,14 +104,6 @@
         }
         .card-content {
             margin-top: 10px;
-        }
-        .card-content h3 {
-            margin: 0;
-            color: #333;
-        }
-        .card-content p {
-            margin: 5px 0;
-            color: #555;
         }
     </style>
 </head>
@@ -151,7 +144,7 @@
         <div class="image-container">
             <p>如果您喜欢G-box，可以请老G喝杯咖啡，感谢您的支持！</p>
             <a href="https://smms.app/image/I2sicMHx31DKUdg" target="_blank">
-                <img src="https://s2.loli.net/2024/08/08/I2sicMHx31DKUdg.jpg" alt="老G的赞赏码" />
+                <img src="https://s2.loli.net/2024/08/08/I2sicMHx31DKUdg.jpg" alt="老G的赞赏码" style="max-width: 200px; height: auto;" />
             </a>
         </div>
     </div>
@@ -164,7 +157,7 @@
             temp.select();
             document.execCommand("copy");
             document.body.removeChild(temp);
-            alert("已复制到剪贴板");
+            // alert("已复制到剪贴板");
         }
     </script>
 </body>
