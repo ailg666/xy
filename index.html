@@ -19,9 +19,9 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-            text-align: center;
         }
         h1 {
+            text-align: center;
             color: #333;
             margin-bottom: 20px;
         }
@@ -57,18 +57,24 @@
         }
         .image-container {
             margin: 20px 0;
+            text-align: center;
         }
         img {
             max-width: 200px;
             height: auto;
             border-radius: 8px;
         }
+        .card-container {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
         .card {
+            flex: 1;
             display: flex;
             align-items: center;
-            justify-content: space-between;
             padding: 10px;
-            margin: 10px 0;
+            margin: 0 10px;
             background: #f9f9f9;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -90,6 +96,17 @@
             margin: 5px 0;
             color: #555;
         }
+        .copy-button {
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .copy-button:hover {
+            background-color: #2980b9;
+        }
     </style>
 </head>
 <body>
@@ -98,27 +115,30 @@
         <p>
             G-Box的安装使用说明：<br>
             用SSH工具登陆要安装设备的命令控制台，执行一键脚本，在主菜单选择5，根据引导完成项安装；<br>
-            <code>bash -c "$(curl -sSLf https://ailg.ggbond.org/xy_install.sh)"</code><br>
+            <code id="script1">bash -c "$(curl -sSLf https://ailg.ggbond.org/xy_install.sh)"</code>
+            <button class="copy-button" onclick="copyToClipboard('#script1')">复制</button><br>
             备用脚本：<br>
-            <code>bash -c "$(curl -sSLf https://gbox.ggbond.org/xy_install.sh)"</code><br>
-            <code>bash -c "$(curl -sSLf https://xy.ggbond.org/xy/xy_install.sh)"</code><br><br>
+            <code id="script2">bash -c "$(curl -sSLf https://gbox.ggbond.org/xy_install.sh)"</code>
+            <button class="copy-button" onclick="copyToClipboard('#script2')">复制</button><br>
+            <code id="script3">bash -c "$(curl -sSLf https://xy.ggbond.org/xy/xy_install.sh)"</code>
+            <button class="copy-button" onclick="copyToClipboard('#script3')">复制</button><br><br>
         </p>
         
-        <div class="card">
-            <img src="https://img.youtube.com/vi/hYwCxJqChUw/0.jpg" alt="G-box 视频教程">
-            <div class="card-content">
-                <h3>G-box的详细使用说明</h3>
-                <p>可观看这个视频：</p>
-                <a href="https://youtu.be/hYwCxJqChUw?si=YZJsw_Aqt10VRNqS" target="_blank" class="button">观看视频</a>
+        <div class="card-container">
+            <div class="card">
+                <img src="https://img.youtube.com/vi/hYwCxJqChUw/0.jpg" alt="G-box 视频教程">
+                <div class="card-content">
+                    <h3>G-box的详细使用说明</h3>
+                    <a href="https://youtu.be/hYwCxJqChUw?si=YZJsw_Aqt10VRNqS" target="_blank" class="button">Youtube观看</a>
+                </div>
             </div>
-        </div>
 
-        <div class="card">
-            <img src="https://via.placeholder.com/120" alt="阿里云盘">
-            <div class="card-content">
-                <h3>阿里云盘</h3>
-                <p>也可保存到阿里云盘后观看，或者直接G-Box首页的ailg_jf目录中观看：</p>
-                <a href="https://www.alipan.com/s/KEvj3Em71vU" target="_blank" class="button">阿里云盘</a>
+            <div class="card">
+                <img src="https://via.placeholder.com/120" alt="阿里云盘">
+                <div class="card-content">
+                    <h3>阿里云盘</h3>
+                    <a href="https://www.alipan.com/s/KEvj3Em71vU" target="_blank" class="button">转存阿里云盘观看</a>
+                </div>
             </div>
         </div>
 
@@ -133,6 +153,28 @@
                 <img src="https://s2.loli.net/2024/08/08/I2sicMHx31DKUdg.jpg" alt="老G的赞赏码" />
             </a>
         </div>
+
+        <div class="image-container">
+            <a href="#" id="homepage-link" class="button">跳转首页观看</a>
+        </div>
     </div>
+
+    <script>
+        function copyToClipboard(element) {
+            var temp = document.createElement("textarea");
+            document.body.appendChild(temp);
+            temp.value = document.querySelector(element).textContent;
+            temp.select();
+            document.execCommand("copy");
+            document.body.removeChild(temp);
+            alert("已复制到剪贴板");
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            var host = window.location.hostname;
+            var homepageLink = document.getElementById("homepage-link");
+            homepageLink.href = "http://" + host + ":5678/ailg_jf/g-box保镖教程.mp4";
+        });
+    </script>
 </body>
 </html>
