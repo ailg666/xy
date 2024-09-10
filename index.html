@@ -113,6 +113,10 @@
         }
         .card-content {
             margin-top: 10px;
+            text-align: center;
+        }
+        .card-content h3 {
+            margin: 10px 0;
         }
     </style>
 </head>
@@ -121,7 +125,7 @@
         <h1>欢迎使用 G-Box</h1>
         <p>
             G-Box的安装使用说明：<br>
-            用SSH工具登陆要安装设备的命令控制台，执行一键脚本，在主菜单选择5，根据引导完成项安装；<br>
+            在哪个设备安装，就用SSH工具登陆它的命令控制台，执行一键脚本，在主菜单选择5，根据引导完成项安装；<br>
             <div class="code-container">
                 <code id="script1">bash -c "$(curl -sSLf https://ailg.ggbond.org/xy_install.sh)"</code>
                 <span class="copy-icon" onclick="copyToClipboard('#script1')">📋</span>
@@ -152,7 +156,7 @@
             </div>
 
             <div class="card">
-                <img src="https://img.youtube.com/vi/hYwCxJqChUw/0.jpg" alt="B站 视频教程">
+                <img src="https://pic.imgdb.cn/item/66e0523ed9c307b7e965d430.png" alt="B站 视频教程">
                 <div class="card-content">
                     <h3>G-Box解决115风控（含速装Emby教程）</h3>
                     <a href="https://b23.tv/ewhi6pF" target="_blank" class="button">B站观看</a>
@@ -189,7 +193,7 @@
             notification.style.display = 'inline';
             setTimeout(function() {
                 notification.style.display = 'none';
-            }, 2000);
+            }, 1000);
         }
     </script>
 </body>
