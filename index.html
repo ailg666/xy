@@ -52,6 +52,16 @@
         .copy-icon:hover {
             color: #2980b9;
         }
+        .copy-notification {
+            position: absolute;
+            top: -20px;
+            right: 10px;
+            background: #3498db;
+            color: #fff;
+            padding: 5px;
+            border-radius: 4px;
+            display: none;
+        }
         a {
             color: #3498db;
             text-decoration: none;
@@ -115,15 +125,18 @@
             <div class="code-container">
                 <code id="script1">bash -c "$(curl -sSLf https://ailg.ggbond.org/xy_install.sh)"</code>
                 <span class="copy-icon" onclick="copyToClipboard('#script1')">📋</span>
+                <span class="copy-notification" id="copy-notification1">已复制</span>
             </div>
             备用脚本：<br>
             <div class="code-container">
                 <code id="script2">bash -c "$(curl -sSLf https://gbox.ggbond.org/xy_install.sh)"</code>
                 <span class="copy-icon" onclick="copyToClipboard('#script2')">📋</span>
+                <span class="copy-notification" id="copy-notification2">已复制</span>
             </div>
             <div class="code-container">
                 <code id="script3">bash -c "$(curl -sSLf https://xy.ggbond.org/xy/xy_install.sh)"</code>
                 <span class="copy-icon" onclick="copyToClipboard('#script3')">📋</span>
+                <span class="copy-notification" id="copy-notification3">已复制</span>
             </div>
         </p>
         
@@ -137,7 +150,7 @@
             </div>
 
             <div class="card">
-                <img src="https://via.placeholder.com/300x200" alt="阿里云盘">
+                <img src="https://img.youtube.com/vi/hYwCxJqChUw/0.jpg" alt="阿里云盘">
                 <div class="card-content">
                     <a href="https://www.alipan.com/s/KEvj3Em71vU" target="_blank" class="button">转存阿里云盘观看</a>
                 </div>
@@ -165,7 +178,15 @@
             temp.select();
             document.execCommand("copy");
             document.body.removeChild(temp);
-            alert("已复制");
+            showNotification(element);
+        }
+
+        function showNotification(element) {
+            var notification = document.querySelector(element + ' + .copy-icon + .copy-notification');
+            notification.style.display = 'inline';
+            setTimeout(function() {
+                notification.style.display = 'none';
+            }, 2000);
         }
     </script>
 </body>
