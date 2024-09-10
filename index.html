@@ -33,8 +33,24 @@
             background: #eaeaea;
             padding: 2px 4px;
             border-radius: 4px;
-            display: block;
+            display: inline-block;
             margin: 10px 0;
+            position: relative;
+        }
+        .copy-button {
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            font-size: 12px;
+        }
+        .copy-button:hover {
+            background-color: #2980b9;
         }
         a {
             color: #3498db;
@@ -60,7 +76,7 @@
             text-align: center;
         }
         img {
-            max-width: 200px;
+            max-width: 100%;
             height: auto;
             border-radius: 8px;
         }
@@ -72,6 +88,7 @@
         .card {
             flex: 1;
             display: flex;
+            flex-direction: column;
             align-items: center;
             padding: 10px;
             margin: 0 10px;
@@ -80,13 +97,12 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         .card img {
-            max-width: 120px;
+            max-width: 100%;
             height: auto;
             border-radius: 8px;
         }
         .card-content {
-            flex: 1;
-            margin-left: 20px;
+            margin-top: 10px;
         }
         .card-content h3 {
             margin: 0;
@@ -96,17 +112,6 @@
             margin: 5px 0;
             color: #555;
         }
-        .copy-button {
-            background-color: #3498db;
-            color: #fff;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .copy-button:hover {
-            background-color: #2980b9;
-        }
     </style>
 </head>
 <body>
@@ -115,28 +120,24 @@
         <p>
             G-Box的安装使用说明：<br>
             用SSH工具登陆要安装设备的命令控制台，执行一键脚本，在主菜单选择5，根据引导完成项安装；<br>
-            <code id="script1">bash -c "$(curl -sSLf https://ailg.ggbond.org/xy_install.sh)"</code>
-            <button class="copy-button" onclick="copyToClipboard('#script1')">复制</button><br>
+            <code id="script1">bash -c "$(curl -sSLf https://ailg.ggbond.org/xy_install.sh)"<button class="copy-button" onclick="copyToClipboard('#script1')">复制</button></code><br>
             备用脚本：<br>
-            <code id="script2">bash -c "$(curl -sSLf https://gbox.ggbond.org/xy_install.sh)"</code>
-            <button class="copy-button" onclick="copyToClipboard('#script2')">复制</button><br>
-            <code id="script3">bash -c "$(curl -sSLf https://xy.ggbond.org/xy/xy_install.sh)"</code>
-            <button class="copy-button" onclick="copyToClipboard('#script3')">复制</button><br><br>
+            <code id="script2">bash -c "$(curl -sSLf https://gbox.ggbond.org/xy_install.sh)"<button class="copy-button" onclick="copyToClipboard('#script2')">复制</button></code><br>
+            <code id="script3">bash -c "$(curl -sSLf https://xy.ggbond.org/xy/xy_install.sh)"<button class="copy-button" onclick="copyToClipboard('#script3')">复制</button></code><br><br>
         </p>
         
+        <h2>G-box的详细使用说明</h2>
         <div class="card-container">
             <div class="card">
                 <img src="https://img.youtube.com/vi/hYwCxJqChUw/0.jpg" alt="G-box 视频教程">
                 <div class="card-content">
-                    <h3>G-box的详细使用说明</h3>
                     <a href="https://youtu.be/hYwCxJqChUw?si=YZJsw_Aqt10VRNqS" target="_blank" class="button">Youtube观看</a>
                 </div>
             </div>
 
             <div class="card">
-                <img src="https://via.placeholder.com/120" alt="阿里云盘">
+                <img src="https://via.placeholder.com/300x200" alt="阿里云盘">
                 <div class="card-content">
-                    <h3>阿里云盘</h3>
                     <a href="https://www.alipan.com/s/KEvj3Em71vU" target="_blank" class="button">转存阿里云盘观看</a>
                 </div>
             </div>
@@ -153,10 +154,6 @@
                 <img src="https://s2.loli.net/2024/08/08/I2sicMHx31DKUdg.jpg" alt="老G的赞赏码" />
             </a>
         </div>
-
-        <div class="image-container">
-            <a href="#" id="homepage-link" class="button">跳转首页观看</a>
-        </div>
     </div>
 
     <script>
@@ -169,12 +166,6 @@
             document.body.removeChild(temp);
             alert("已复制到剪贴板");
         }
-
-        document.addEventListener("DOMContentLoaded", function() {
-            var host = window.location.hostname;
-            var homepageLink = document.getElementById("homepage-link");
-            homepageLink.href = "http://" + host + ":5678/ailg_jf/g-box保镖教程.mp4";
-        });
     </script>
 </body>
 </html>
