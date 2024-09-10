@@ -6,31 +6,35 @@
     <title>欢迎使用 G-Box</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Roboto', sans-serif;
             line-height: 1.6;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background-color: #f4f4f4;
         }
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: auto;
             background: #fff;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
         h1 {
-            text-align: center;
             color: #333;
+            margin-bottom: 20px;
         }
         p {
             margin: 10px 0;
+            color: #555;
         }
         code {
             background: #eaeaea;
             padding: 2px 4px;
             border-radius: 4px;
+            display: block;
+            margin: 10px 0;
         }
         a {
             color: #3498db;
@@ -39,9 +43,52 @@
         a:hover {
             text-decoration: underline;
         }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px 0;
+            background-color: #3498db;
+            color: #fff;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        .button:hover {
+            background-color: #2980b9;
+        }
+        .image-container {
+            margin: 20px 0;
+        }
         img {
             max-width: 200px;
             height: auto;
+            border-radius: 8px;
+        }
+        .card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            margin: 10px 0;
+            background: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .card img {
+            max-width: 120px;
+            height: auto;
+            border-radius: 8px;
+        }
+        .card-content {
+            flex: 1;
+            margin-left: 20px;
+        }
+        .card-content h3 {
+            margin: 0;
+            color: #333;
+        }
+        .card-content p {
+            margin: 5px 0;
+            color: #555;
         }
     </style>
 </head>
@@ -57,28 +104,35 @@
             <code>bash -c "$(curl -sSLf https://xy.ggbond.org/xy/xy_install.sh)"</code><br><br>
         </p>
         
-        <p>
-            G-box的详细使用说明可观看这个视频：
-            <a href="https://youtu.be/hYwCxJqChUw?si=YZJsw_Aqt10VRNqS" target="_blank">https://youtu.be/hYwCxJqChUw?si=YZJsw_Aqt10VRNqS</a>
-        </p>
-        <p>
-            也可保存到阿里云盘后观看，或者直接G-Box首页的ailg_jf目录中观看：
-            <a href="https://www.alipan.com/s/KEvj3Em71vU" target="_blank">https://www.alipan.com/s/KEvj3Em71vU</a>
-        </p>
-        <p>
-            问题/玩法/心得……可加TG群求助或交流：
-            <a href="https://t.me/ailg666" target="_blank">https://t.me/ailg666</a>
-            <br><br>
-        </p>
+        <div class="card">
+            <img src="https://img.youtube.com/vi/hYwCxJqChUw/0.jpg" alt="G-box 视频教程">
+            <div class="card-content">
+                <h3>G-box的详细使用说明</h3>
+                <p>可观看这个视频：</p>
+                <a href="https://youtu.be/hYwCxJqChUw?si=YZJsw_Aqt10VRNqS" target="_blank" class="button">观看视频</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <img src="https://via.placeholder.com/120" alt="阿里云盘">
+            <div class="card-content">
+                <h3>阿里云盘</h3>
+                <p>也可保存到阿里云盘后观看，或者直接G-Box首页的ailg_jf目录中观看：</p>
+                <a href="https://www.alipan.com/s/KEvj3Em71vU" target="_blank" class="button">阿里云盘</a>
+            </div>
+        </div>
 
         <p>
-            如果您喜欢G-box，可以请老G喝杯咖啡，感谢您的支持！<br>
+            问题/玩法/心得……可加TG群求助或交流：
+            <a href="https://t.me/ailg666" target="_blank" class="button">加入TG群</a>
+        </p>
+
+        <div class="image-container">
+            <p>如果您喜欢G-box，可以请老G喝杯咖啡，感谢您的支持！</p>
             <a href="https://smms.app/image/I2sicMHx31DKUdg" target="_blank">
                 <img src="https://s2.loli.net/2024/08/08/I2sicMHx31DKUdg.jpg" alt="老G的赞赏码" />
             </a>
-            <br><br><br><br><br><br>
-        </p>
+        </div>
     </div>
 </body>
 </html>
-
