@@ -14,7 +14,6 @@ INFO="[${Green}INFO${NC}]"
 ERROR="[${Red}ERROR${NC}]"
 WARN="[${Yellow}WARN${NC}]"
 
-#这是一个测试的注释
 function INFO() {
     echo -e "${INFO} ${1}"
 }
