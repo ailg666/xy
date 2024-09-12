@@ -832,7 +832,7 @@ function user_select4() {
 
     start_time=$(date +%s)
     for i in {1..5}; do
-        remote_size=$(curl -sL -D - -o /dev/null --max-time 5 "$docker_addr/d/ailg_jf/${down_path}/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tail -n 1 | tr -d '\r')
+        remote_size=$(curl -sL -D - -o /dev/null --max-time 10 "$docker_addr/d/ailg_jf/${down_path}/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tail -n 1 | tr -d '\r')
         [[ -n $remote_size ]] && echo -e "remotesize is：${remote_size}" && break
     done
     if [[ $remote_size -lt 100000 ]]; then
