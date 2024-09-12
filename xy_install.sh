@@ -177,42 +177,6 @@ function get_emby_happy_image() {
     docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ${emby_image} || (ERROR "${emby_image}镜像拉取失败，请手动安装emby，无需重新运行本脚本，小雅媒体库在${img_mount}！" && exit 1)
 }
 
-#获取小雅alist配置目录路径
-# function get_config_path() {
-#     docker_name=$(docker ps -a | grep ailg/alist | awk '{print $NF}')
-#     docker_name=${docker_name:-"xiaoya_jf"}
-#     if command -v jq > /dev/null 2>&1; then
-#         config_dir=$(docker inspect $docker_name | jq -r '.[].Mounts[] | select(.Destination=="/data") | .Source')
-#     else
-#         #config_dir=$(docker inspect xiaoya | awk '/"Destination": "\/data"/{print a} {a=$0}'|awk -F\" '{print $4}')
-#         config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "$docker_name")
-#     fi
-#     echo -e "\033[1;37m找到您的小雅ALIST配置文件路径是: \033[1;35m\n$config_dir\033[0m"
-#     echo -e "\n"
-#     f12_select_0=""
-#     t=10
-#     while [[ -z "$f12_select_0" && $t -gt 0 ]]; do
-#         printf "\r确认请按任意键，或者按N/n手动输入路径（注：上方显示多个路径也请选择手动输入）：（%2d 秒后将默认确认）：" $t
-#         read -r -t 1 -n 1 f12_select_0
-#         [ $? -eq 0 ] && break
-#         t=$((t - 1))
-#     done
-#     #read -erp "确认请按任意键，或者按N/n手动输入路径（注：上方显示多个路径也请选择手动输入）：" f12_select_0
-#     if [[ $f12_select_0 == [Nn] ]]; then
-#         echo -e "\033[1;35m请输入您的小雅ALIST配置文件路径:\033[0m"
-#         read -r config_dir
-#         if [ -z $1 ];then
-#             if ! [[ -d "$config_dir" && -f "$config_dir/mytoken.txt" ]]; then
-#                 ERROR "该路径不存在或该路径下没有mytoken.txt配置文件"
-#                 ERROR "如果你是选择全新目录重装小雅alist，请先删除原来的容器，再重新运行本脚本！"
-#                 ERROR -e "\033[1;31m您选择的目录不正确，程序退出。\033[0m"
-#                 exit 1
-#             fi
-#         fi
-#     fi
-#     config_dir=${config_dir:-"/etc/xiaoya"}
-# }
-
 function get_config_path() {
     images=("ailg/alist" "xiaoyaliu/alist" "ailg/g-box")
     results=()
@@ -714,9 +678,9 @@ function user_select4() {
         echo -e "\n"
         echo -e "——————————————————————————————————————————————————————————————————————————————————"
         echo -e "\n"
-        echo -e "\033[1;32m1、小雅EMBY老G速装 - 完整版\033[0m"
+        echo -e "\033[1;32m1、小雅EMBY老G速装 - 115完整版\033[0m"
         echo -e "\n"
-        echo -e "\033[1;35m2、小雅EMBY老G速装 - Lite版\033[0m"
+        echo -e "\033[1;35m2、小雅EMBY老G速装 - 115-Lite版\033[0m"
         echo -e "\n"
         echo -e "\033[1;32m3、小雅JELLYFIN老G速装 - 10.8.13 - 完整版\033[0m"
         echo -e "\n"
@@ -726,20 +690,22 @@ function user_select4() {
         echo -e "\n"
         echo -e "\033[1;35m6、小雅JELLYFIN老G速装 - 10.9.6 - Lite版\033[0m"
         echo -e "\n"
+        echo -e "\033[1;35m7、小雅EMBY老G速装 - Lite版\033[0m"
+        echo -e "\n"
         echo -e "——————————————————————————————————————————————————————————————————————————————————"
 
-        read -erp "请输入您的选择（1-4，按b返回上级菜单或按q退出）；" f4_select
+        read -erp "请输入您的选择（1-7，按b返回上级菜单或按q退出）；" f4_select
         case "$f4_select" in
         1)
-            emby_ailg="emby-ailg.mp4"
-            emby_img="emby-ailg.img"
-            space_need=140
+            emby_ailg="emby-ailg-115.mp4"
+            emby_img="emby-ailg-115.img"
+            space_need=160
             break
             ;;
         2)
-            emby_ailg="emby-ailg-lite.mp4"
-            emby_img="emby-ailg-lite.img"
-            space_need=125
+            emby_ailg="emby-ailg-lite-115.mp4"
+            emby_img="emby-ailg-lite-115.img"
+            space_need=140
             break
             ;;
         3)
@@ -764,6 +730,12 @@ function user_select4() {
             emby_ailg="jellyfin-10.9.6-ailg-lite.mp4"
             emby_img="jellyfin-10.9.6-ailg-lite.img"
             space_need=130
+            break
+            ;;
+        7)
+            emby_ailg="emby-ailg-lite.mp4"
+            emby_img="emby-ailg-lite.img"
+            space_need=125
             break
             ;;
         [Bb])
@@ -1152,10 +1124,10 @@ happy_emby() {
 }
 
 get_img_path() {
-    read -erp "请输入您要挂载的镜像的完整路径：（示例：/volume3/emby/emby-ailg-lite.img）" img_path
+    read -erp "请输入您要挂载的镜像的完整路径：（示例：/volume3/emby/emby-ailg-lite-115.img）" img_path
     img_name=$(basename "${img_path}")
     case "${img_name}" in
-    "emby-ailg.img" | "emby-ailg-lite.img" | "jellyfin-ailg.img" | "jellyfin-ailg-lite.img" | "jellyfin-10.9.6-ailg-lite.img" | "jellyfin-10.9.6-ailg.img") ;;
+    "emby-ailg-115.img" | "emby-ailg-lite-115.img" | "jellyfin-ailg.img" | "jellyfin-ailg-lite.img" | "jellyfin-10.9.6-ailg-lite.img" | "jellyfin-10.9.6-ailg.img") ;;
     *)
         ERROR "您输入的不是老G的镜像，或已改名，确保文件名正确后重新运行脚本！"
         exit 1
