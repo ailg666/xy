@@ -735,11 +735,14 @@ check_loop_support() {
         source ~/.profile
         mv /bin/mount /bin/mount.bak
         mv /bin/umount /bin/umount.bak
+        mv /usr/local/sbin/losetup /usr/local/sbin/losetup.bak
         opkg update
         opkg install util-linux
         opkg install mount-utils
+        opkg install losetup
         cp /opt/bin/mount /bin/mount
         cp /opt/bin/umount /bin/umount
+        cp /opt/bin/losetup /usr/local/sbin/losetup
         INFO "已完成安装环境更新！"
     fi
  }
