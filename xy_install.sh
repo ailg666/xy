@@ -120,14 +120,12 @@ function get_emby_image() {
         exit 1
         ;;
     esac
-    if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ${emby_image}; then
-        for i in {1..3}; do
-            if docker_pull $emby_image; then
-                INFO "${emby_image}镜像拉取成功！"
-                break
-            fi
-        done
-    fi
+    for i in {1..3}; do
+        if docker_pull $emby_image; then
+            INFO "${emby_image}镜像拉取成功！"
+            break
+        fi
+    done
     docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ${emby_image} || (ERROR "${emby_image}镜像拉取失败，请手动安装emby，无需重新运行本脚本，小雅媒体库在${media_dir}！" && exit 1)
 }
 
@@ -338,91 +336,74 @@ get_emby_status() {
 
 #镜像代理的内容抄的DDSRem大佬的，适当修改了一下
 function docker_pull() {
-    if ! [[ "$skip_choose_mirror" == [Yy] ]]; then
-        mirrors=()
-        INFO "正在从${config_dir}/docker_mirrors.txt文件获取代理点配置……"
-        while IFS= read -r line; do
-            mirrors+=("$line")
-        done < "${config_dir}/docker_mirrors.txt"
+    mirrors=()
+    INFO "正在从${config_dir}/docker_mirrors.txt文件获取代理点配置……"
+    while IFS= read -r line; do
+        mirrors+=("$line")
+    done < "${config_dir}/docker_mirrors.txt"
 
-        if command -v timeout > /dev/null 2>&1;then
-            for mirror in "${mirrors[@]}"; do
-                INFO "正在从${mirror}代理点为您下载镜像……"
-                #local_sha=$(timeout 300 docker pull "${mirror}/${1}" 2>&1 | grep 'Digest: sha256' | awk -F':' '{print $3}')
-                if command -v mktemp > /dev/null; then
-                    tempfile=$(mktemp)
-                else
-                    tempfile="/tmp/tmp_sha"
-                fi
-                timeout 300 docker pull "${mirror}/${1}" | tee "$tempfile"
-                local_sha=$(grep 'Digest: sha256' "$tempfile" | awk -F':' '{print $3}')
-                echo -e "local_sha:${local_sha}"
-                rm "$tempfile"
+    if command -v timeout > /dev/null 2>&1;then
+        for mirror in "${mirrors[@]}"; do
+            INFO "正在从${mirror}代理点为您下载镜像……"
+            #local_sha=$(timeout 300 docker pull "${mirror}/${1}" 2>&1 | grep 'Digest: sha256' | awk -F':' '{print $3}')
+            if command -v mktemp > /dev/null; then
+                tempfile=$(mktemp)
+            else
+                tempfile="/tmp/tmp_sha"
+            fi
+            timeout 300 docker pull "${mirror}/${1}" | tee "$tempfile"
+            local_sha=$(grep 'Digest: sha256' "$tempfile" | awk -F':' '{print $3}')
+            echo -e "local_sha:${local_sha}"
+            rm "$tempfile"
 
-                if [ -n "${local_sha}" ]; then
-                    sed -i "\#${1}#d" "${config_dir}/ailg_sha.txt"
-                    echo "${1} ${local_sha}" >> "${config_dir}/ailg_sha.txt"
-                    [[ "${mirror}" == "docker.io" ]] && return 0
-                    break
-                else
-                    WARN "${1} 镜像拉取失败，正在进行重试..."
-                fi
-            done
-        else
-            for mirror in "${mirrors[@]}"; do
-                INFO "正在从${mirror}代理点为您下载镜像……"
-                timeout=200
-                (docker pull "${mirror}/${1}" 2>&1 | tee /dev/stderr | grep 'Digest: sha256' | awk -F':' '{print $3}' > "/tmp/tmp_sha") &
-                pid=$!
-                count=0
-                while kill -0 $pid 2>/dev/null; do
-                    sleep 5
-                    count=$((count+5))
-                    if [ $count -ge $timeout ]; then
-                        echo "Command timed out"
-                        kill $pid
-                        break
-                    fi
-                done
-                local_sha=$(cat "/tmp/tmp_sha")
-                rm "/tmp/tmp_sha"
-                if [ -n "${local_sha}" ]; then
-                    INFO "${1} 镜像拉取成功！"
-                    sed -i "\#${1}#d" "${config_dir}/ailg_sha.txt"
-                    echo "${1} ${local_sha}" >> "${config_dir}/ailg_sha.txt"
-                    echo -e "local_sha:${local_sha}"
-                    [[ "${mirror}" == "docker.io" ]] && return 0
-                    break
-                else
-                    WARN "${1} 镜像拉取失败，正在进行重试..."
-                fi
-            done
-        fi
-
-        if [ -n "$(docker images -q "${mirror}/${1}")" ]; then
-            docker tag "${mirror}/${1}" "${1}"
-            docker rmi "${mirror}/${1}"
-            return 0
-        else
-            ERROR "已尝试docker_mirrors.txt中所有镜像代理拉取失败，程序将退出，请检查网络后再试！"
-            WARN "如需重测速选择代理，请手动删除${config_dir}/docker_mirrors.txt文件后重新运行脚本！"
-            exit 1       
-        fi
+            if [ -n "${local_sha}" ]; then
+                sed -i "\#${1}#d" "${config_dir}/ailg_sha.txt"
+                echo "${1} ${local_sha}" >> "${config_dir}/ailg_sha.txt"
+                [[ "${mirror}" == "docker.io" ]] && return 0
+                break
+            else
+                WARN "${1} 镜像拉取失败，正在进行重试..."
+            fi
+        done
     else
-        tempfile="/tmp/tmp_sha"
-        docker pull "${1}" | tee "$tempfile"
-        local_sha=$(grep 'Digest: sha256' "$tempfile" | awk -F':' '{print $3}')
-        echo -e "local_sha:${local_sha}"
-        rm "$tempfile"
+        for mirror in "${mirrors[@]}"; do
+            INFO "正在从${mirror}代理点为您下载镜像……"
+            timeout=200
+            (docker pull "${mirror}/${1}" 2>&1 | tee /dev/stderr | grep 'Digest: sha256' | awk -F':' '{print $3}' > "/tmp/tmp_sha") &
+            pid=$!
+            count=0
+            while kill -0 $pid 2>/dev/null; do
+                sleep 5
+                count=$((count+5))
+                if [ $count -ge $timeout ]; then
+                    echo "Command timed out"
+                    kill $pid
+                    break
+                fi
+            done
+            local_sha=$(cat "/tmp/tmp_sha")
+            rm "/tmp/tmp_sha"
+            if [ -n "${local_sha}" ]; then
+                INFO "${1} 镜像拉取成功！"
+                sed -i "\#${1}#d" "${config_dir}/ailg_sha.txt"
+                echo "${1} ${local_sha}" >> "${config_dir}/ailg_sha.txt"
+                echo -e "local_sha:${local_sha}"
+                [[ "${mirror}" == "docker.io" ]] && return 0
+                break
+            else
+                WARN "${1} 镜像拉取失败，正在进行重试..."
+            fi
+        done
+    fi
 
-        if [ -n "${local_sha}" ]; then
-            sed -i "\#${1}#d" "${config_dir}/ailg_sha.txt"
-            echo "${1} ${local_sha}" >> "${config_dir}/ailg_sha.txt"
-            return 0
-        else
-            WARN "${1} 镜像拉取失败，正在进行重试..."
-            return 1
-        fi
+    if [ -n "$(docker images -q "${mirror}/${1}")" ]; then
+        docker tag "${mirror}/${1}" "${1}"
+        docker rmi "${mirror}/${1}"
+        return 0
+    else
+        ERROR "已尝试docker_mirrors.txt中所有镜像代理拉取失败，程序将退出，请检查网络后再试！"
+        WARN "如需重测速选择代理，请手动删除${config_dir}/docker_mirrors.txt文件后重新运行脚本！"
+        exit 1       
     fi
 }
 
@@ -441,7 +422,7 @@ update_ailg() {
         local_sha=$(docker inspect -f'{{index .RepoDigests 0}}' "${update_img}" | cut -f2 -d:)
     fi
     for i in {1..3}; do
-        remote_sha=$(curl -sSLf https://gbox.ggbond.org/ailg_sha_remote.txt | grep -E "${update_img}" | awk '{print $2}')
+        remote_sha=$(curl -sSLf https://xy.ggbond.org/xy/ailg_sha_remote.txt | grep -E "${update_img}" | awk '{print $2}')
         [ -n "${remote_sha}" ] && break
     done
     #remote_sha=$(curl -s -m 20 "https://hub.docker.com/v2/repositories/ailg/${name_img}/tags/${tag_img}" | grep -oE '[0-9a-f]{64}' | tail -1)
@@ -544,12 +525,12 @@ function user_select1() {
             update_ailg "${_update_img}"
         fi
     fi
-    curl -o /tmp/update_new_jf.sh https://gbox.ggbond.org/update_new_jf.sh
+    curl -o /tmp/update_new_jf.sh https://xy.ggbond.org/xy/update_new_jf.sh
     for i in {1..5}; do
         grep -q "长度不对" /tmp/update_new_jf.sh && break
         echo -e "文件获取失败，正在进行第${i}次重试……"
         rm -f /tmp/update_new_jf.sh >/dev/null 2>&1
-        curl -o /tmp/update_new_jf.sh https://gbox.ggbond.org/update_new_jf.sh
+        curl -o /tmp/update_new_jf.sh https://xy.ggbond.org/xy/update_new_jf.sh
     done
     grep -q "长度不对" /tmp/update_new_jf.sh || {
         echo -e "文件获取失败，检查网络后重新运行脚本！"
@@ -595,7 +576,7 @@ function user_select2() {
     fi
     mkdir -p $media_dir/xiaoya
     mkdir -p $media_dir/temp
-    curl -o /tmp/update_meta_jf.sh https://gbox.ggbond.org/update_meta_jf.sh
+    curl -o /tmp/update_meta_jf.sh https://xy.ggbond.org/xy/update_meta_jf.sh
     meta_select
     chmod 777 /tmp/update_meta_jf.sh
     docker run -i --security-opt seccomp=unconfined --rm --net=host -v /tmp:/tmp -v $media_dir:/media -v $config_dir:/etc/xiaoya -e LANG=C.UTF-8 ailg/ggbond:latest /tmp/update_meta_jf.sh
@@ -662,92 +643,10 @@ function user_select3() {
     user_select2
 }
 
-check_loop_support() {
-    if [ ! -e /dev/loop-control ]; then
-        if ! lsmod | awk '$1 == "loop"'; then
-            if ! command -v modprobe &> /dev/null; then
-                echo "modprobe command not found."
-                return 1
-            else
-                if modprobe loop; then
-                    if ! mknod -m 660 /dev/loop-control c 10 237; then
-                        ERROR "您的系统环境不支持直接挂载loop回循设备，无法安装速装版emby/jellyfin，请手动启用该功能后重新运行脚本安装！或用DDS大佬脚本安装原版小雅emby！" && exit 1
-                    fi
-                else
-                    ERROR "您的系统环境不支持直接挂载loop回循设备，无法安装速装版emby/jellyfin，请手动启用该功能后重新运行脚本安装！或用DDS大佬脚本安装原版小雅emby！" && exit 1
-                fi
-            fi
-        fi
-    fi
-
-    if ls -al /dev/loop7 > /dev/null 2>&1; then
-        if losetup /dev/loop7; then
-            imgs=("emby-ailg.img" "emby-ailg-lite.img" "jellyfin-ailg.img" "jellyfin-ailg-lite.img" "emby-ailg-115.img" "emby-ailg-lite-115.img" "media.img")
-            contains=false
-            for img in "${imgs[@]}"; do
-                if losetup /dev/loop7 | grep -q "$img"; then
-                    contains=true
-                    break
-                fi
-            done
-
-            if [ "$contains" = false ]; then
-                ERROR "您系统的/dev/loop7设备已被占用，请手动卸载后重装运行脚本安装！" && exit 1
-            fi
-        else
-            for i in {1..3}; do
-                curl -o /tmp/loop_test.img https://gbox.ggbond.org/loop_test.img
-                if [ -f /tmp/loop_test.img ] && [ $(stat -c%s /tmp/loop_test.img) -gt 1024000 ]; then
-                    break
-                else
-                    rm -f /tmp/loop_test.img
-                fi
-            done
-            if [ ! -f /tmp/loop_test.img ] || [ $(stat -c%s /tmp/loop_test.img) -le 1024000 ]; then
-                ERROR "测试文件下载失败，请检查网络后重新运行脚本！" && exit 1
-            fi
-            if ! losetup -o 35 /dev/loop7 /tmp/loop_test.img > /dev/null 2>&1; then
-                ERROR "您的系统环境不支持直接挂载loop回循设备，无法安装速装版emby/jellyfin，建议排查losetup命令后重新运行脚本安装！或用DDS大佬脚本安装原版小雅emby！"
-                rm -rf /tmp/loop_test.img
-                exit 1
-            else
-                mkdir -p /tmp/loop_test
-                if ! mount /dev/loop7 /tmp/loop_test; then
-                    ERROR "您的系统环境不支持直接挂载loop回循设备，无法安装速装版emby/jellyfin，建议排查mount命令后重新运行脚本安装！或用DDS大佬脚本安装原版小雅emby！"
-                    rm -rf /tmp/loop_test /tmp/loop_test.img
-                    exit 1
-                else
-                    umount /tmp/loop_test
-                    losetup -d /dev/loop7
-                    rm -rf /tmp/loop_test /tmp/loop_test.img
-                    return 0
-                fi
-            fi
-        fi
-    fi
- }
-
- check_qnap() {
-    if grep -Eqi "QNAP" /etc/issue; then
-        INFO "检测到您是QNAP威联通系统，正在尝试更新安装环境，以便速装emby/jellyfin……"
-        wget -O - http://bin.entware.net/x64-k3.2/installer/generic.sh | sh
-        echo 'export PATH=$PATH:/opt/bin:/opt/sbin' >> ~/.profile
-        source ~/.profile
-        mv /bin/mount /bin/mount.bak
-        mv /bin/umount /bin/umount.bak
-        opkg update
-        opkg install util-linux
-        opkg install mount-utils
-        cp /opt/bin/mount /bin/mount
-        cp /opt/bin/umount /bin/umount
-        INFO "已完成安装环境更新！"
-    fi
- }
-
 function user_select4() {
     down_img() {
         if [[ ! -f $image_dir/$emby_ailg ]] || [[ -f $image_dir/$emby_ailg.aria2 ]]; then
-            update_ailg ailg/ggbond:latest
+            docker_pull ailg/ggbond:latest
             docker exec $docker_name ali_clear -1 > /dev/null 2>&1
             docker run --rm --net=host -v $image_dir:/image ailg/ggbond:latest \
                 aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/${down_path}/$emby_ailg"
@@ -765,8 +664,6 @@ function user_select4() {
         done
         [[ -f $image_dir/$emby_ailg.aria2 ]] || [[ $remote_size != "$local_size" ]] && ERROR "文件下载失败，请检查网络后重新运行脚本！" && WARN "未下完的文件存放在${image_dir}目录，以便您续传下载，如不再需要请手动清除！" && exit 1
     }
-    check_qnap
-    check_loop_support
     while :; do
         clear
         echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
@@ -881,7 +778,7 @@ function user_select4() {
         check_space $image_dir $space_need
     fi
 
-    if [[ "${f4_select}" == [127] ]]; then
+    if [[ "${f4_select}" == [12] ]]; then
         search_img="emby/embyserver|amilys/embyserver"
         del_name="emby"
         loop_order="/dev/loop7"
@@ -1083,181 +980,46 @@ function user_select4() {
 
     if [[ ! $answer =~ ^[Nn]$ || -z "$answer" ]]; then
         INFO "正在为您安装小雅元数据爬虫同步……"
+
         for i in {1..3}; do
-            remote_sha=$(curl -s -m 20 "https://hub.docker.com/v2/repositories/ddsderek/xiaoya-emd/tags/latest" | grep -oE '[0-9a-f]{64}' | tail -1)
-            [ -n "${remote_sha}" ] && break
+            if docker_pull ddsderek/xiaoya-emd:latest; then
+                INFO "ddsderek/xiaoya-emd:latest镜像拉取成功！"
+                break
+            fi
         done
-        local_sha=$(docker inspect -f'{{index .RepoDigests 0}}' "ddsderek/xiaoya-emd:latest" | cut -f2 -d:)
-        if [ -z "${local_sha}" ] || [ "${local_sha}" != "${remote_sha}" ];then
-            for i in {1..3}; do
-                if docker_pull ddsderek/xiaoya-emd:latest; then
-                    INFO "ddsderek/xiaoya-emd:latest镜像拉取成功！"
-                    break
-                fi
-            done
-            docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ddsderek/xiaoya-emd:latest || (ERROR "ddsderek/xiaoya-emd:latest镜像拉取失败，请检查网络后手动安装！" && exit 1)
+        docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ddsderek/xiaoya-emd:latest || (ERROR "ddsderek/xiaoya-emd:latest镜像拉取失败，请检查网络后手动安装！" && exit 1)
 
-            if ! docker cp "${docker_name}":/var/lib/"${entrypoint_mount}" "$image_dir/entrypoint.sh"; then
-                if ! curl -o "$image_dir/entrypoint.sh" https://gbox.ggbond.org/${entrypoint_mount}; then
-                    ERROR "获取文件失败，请将老G的alist更新到最新版或检查网络后重试。更新方法：重新运行一键脚本，选1重装alist，使用原来的目录！" && exit 1
-                fi
-            fi
-            chmod 777 "$image_dir/entrypoint.sh"
-            if docker ps -a | grep -qE " ${emd_name}\b" && docker stop "${emd_name}" && docker rm "${emd_name}"; then
-                INFO "${Yellow}已删除您原来的${emd_name}容器！${NC}"
-            fi
-            #docker_pull ddsderek/xiaoya-emd:latest
-            if docker run -d \
-                --name="${emd_name}" \
-                --privileged \
-                --restart=always \
-                --net=host \
-                -e IMG_VOLUME=true \
-                -v "$image_dir/entrypoint.sh":/entrypoint.sh \
-                ddsderek/xiaoya-emd:latest; then
-                INFO "小雅元数据同步爬虫安装成功！"
-            else
-                INFO "小雅元数据同步爬虫安装失败，请手动安装！"
-            fi
-        else
-            if docker ps -a | grep -qE " ${emd_name}\b"; then
-                INFO "小雅元数据同步爬虫已安装，无需重复安装！"
-                docker start ${emd_name}
-            else
-                if ! docker cp "${docker_name}":/var/lib/"${entrypoint_mount}" "$image_dir/entrypoint.sh"; then
-                    if ! curl -o "$image_dir/entrypoint.sh" https://gbox.ggbond.org/${entrypoint_mount}; then
-                        ERROR "获取文件失败，请将老G的alist更新到最新版或检查网络后重试。更新方法：重新运行一键脚本，选1重装alist，使用原来的目录！" && exit 1
-                    fi
-                fi
-                if docker run -d \
-                    --name="${emd_name}" \
-                    --privileged \
-                    --restart=always \
-                    --net=host \
-                    -e IMG_VOLUME=true \
-                    -v "$image_dir/entrypoint.sh":/entrypoint.sh \
-                    ddsderek/xiaoya-emd:latest; then
-                    INFO "小雅元数据同步爬虫安装成功！"
-                else
-                    INFO "小雅元数据同步爬虫安装失败，请手动安装！"
-                fi
+        if ! docker cp "${docker_name}":/var/lib/"${entrypoint_mount}" "$image_dir/entrypoint.sh"; then
+            if ! curl -o "$image_dir/entrypoint.sh" https://xy.ggbond.org/xy/${entrypoint_mount}; then
+                ERROR "获取文件失败，请将老G的alist更新到最新版或检查网络后重试。更新方法：重新运行一键脚本，选1重装alist，使用原来的目录！" && exit 1
             fi
         fi
-    fi
-}
-
-general_uninstall() {
-    if [ -z "$2" ]; then
-        containers=$(docker ps -a --filter "ancestor=${1}" --format "{{.ID}}")
-        if [ -n "$containers" ]; then
-            INFO "正在卸载${1}镜像的容器..."
-            docker rm -f $containers
-            INFO "卸载完成。"
-        else
-            WARN "未安装${1}镜像的容器！"
+        chmod 777 "$image_dir/entrypoint.sh"
+        if docker ps -a | grep -qE " ${emd_name}\b" && docker stop "${emd_name}" && docker rm "${emd_name}"; then
+            INFO "${Yellow}已删除您原来的${emd_name}容器！${NC}"
         fi
-    else
-        if docker ps -a | grep -qE " ${2}\b"; then
-            docker rm -f $2
-            INFO "${2}容器卸载完成！"
+        docker_pull ddsderek/xiaoya-emd:latest
+        if docker run -d \
+            --name="${emd_name}" \
+            --privileged \
+            --restart=always \
+            --net=host \
+            -e IMG_VOLUME=true \
+            -v "$image_dir/entrypoint.sh":/entrypoint.sh \
+            ddsderek/xiaoya-emd:latest; then
+            INFO "小雅元数据同步爬虫安装成功！"
         else
-            WARN "未安装${2}容器！"
+            INFO "小雅元数据同步爬虫安装失败，请手动安装！"
         fi
     fi
 }
 
 ailg_uninstall() {
-    clear
-    while true; do
-        echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
-        echo -e "\n"
-        echo -e "\033[1;32m1、卸载老G版alist\033[0m"
-        echo -e "\n"
-        echo -e "\033[1;35m2、卸载G-Box\033[0m"
-        echo -e "\n"
-        echo -e "\033[1;32m3、卸载小雅老G速装版EMBY/JELLYFIN\033[0m"
-        echo -e "\n"
-        echo -e "\033[1;32m4、卸载G-Box内置的Sun-Panel导航\033[0m"
-        echo -e "\n"
-        echo -e "\033[1;35m5、卸载小雅EMBY老G速装版爬虫\033[0m"
-        echo -e "\n"
-        echo -e "\033[1;35m6、卸载小雅JELLYFIN老G速装版爬虫\033[0m"
-        echo -e "\n"
-        echo -e "——————————————————————————————————————————————————————————————————————————————————"
-
-        read -erp "请输入您的选择（1-7，按b返回上级菜单或按q退出）；" uninstall_select
-        case "$uninstall_select" in
-        1)
-            general_uninstall "ailg/alist:latest"
-            general_uninstall "ailg/alist:hostmode"
-            break
-            ;;
-        2)
-            general_uninstall "ailg/g-box:hostmode"
-            break
-            ;;
-        3)
-            img_uninstall
-            break
-            ;;
-        4)
-            sp_uninstall
-            break
-            ;;
-        5)
-            general_uninstall "ddsderek/xiaoya-emd:latest" "xiaoya-emd"
-            break
-            ;;
-        6)
-            general_uninstall "ddsderek/xiaoya-emd:latest" "xiaoya-emd-jf"
-            break
-            ;;
-        [Bb])
-            clear
-            user_selecto
-            break
-            ;;
-        [Qq])
-            exit
-            ;;
-        *)
-            ERROR "输入错误，按任意键重新输入！"
-            read -rn 1
-            continue
-            ;;
-        esac
-    done
-}
-
-sp_uninstall() {
-    container=$(docker ps -a --filter "ancestor=ailg/g-box:hostmode" --format "{{.ID}}")
-    if [ -n "$container" ]; then
-        host_dir=$(docker inspect --format='{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' $container)       
-        if [ -n "$host_dir" ]; then
-            echo "uninstall" > "$host_dir/sun-panel.txt"
-            if docker exec "$container" test -f /app/sun-panel; then
-                INFO "已为您卸载Sun-Panel导航，正在重启g-box容器……"
-                docker restart $container
-            else
-                echo "Sun-Panel导航已经卸载。"
-            fi
-        else
-            ERROR "未能定位到g-box容器的配置文件目录，请确认g-box是否正确安装，程序退出！"
-            return 1
-        fi
-    else
-        ERROR "老铁！你还没安装g-box怎么来卸载sun-panel呢？"
-        return 1
-    fi
-}
-
-img_uninstall() {   
     INFO "是否${Red}删除老G速装版镜像文件${NC} [Y/n]（保留请按N/n键，按其他任意键默认删除）"
     read -erp "请输入：" clear_img
     [[ ! "${clear_img}" =~ ^[Nn]$ ]] && clear_img="y"
 
     declare -ga img_order
-    search_img="emby/embyserver|amilys/embyserver|nyanmisaka/jellyfin|jellyfin/jellyfin"
     get_emby_status > /dev/null
     if [ ${#emby_list[@]} -ne 0 ]; then
         for op_emby in "${!emby_list[@]}"; do
@@ -1675,7 +1437,7 @@ sync_config() {
         echo -e "\033[1;31m同步进行中，需要较长时间，请耐心等待，直到出命令行提示符才算结束！\033[0m"
         [ -f "/tmp/sync_emby_config_ailg.sh" ] && rm -f /tmp/sync_emby_config_ailg.sh
         for i in {1..3}; do
-            curl -sSfL -o /tmp/sync_emby_config_ailg.sh https://gbox.ggbond.org/sync_emby_config_img_ailg.sh
+            curl -sSfL -o /tmp/sync_emby_config_ailg.sh https://xy.ggbond.org/xy/sync_emby_config_img_ailg.sh
             grep -q "返回错误" /tmp/sync_emby_config_ailg.sh && break
         done
         grep -q "返回错误" /tmp/sync_emby_config_ailg.sh || {
@@ -1707,7 +1469,7 @@ user_selecto() {
         clear
         echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
         echo -e "\n"
-        echo -e "\033[1;32m1、卸载全在这\033[0m"
+        echo -e "\033[1;32m1、卸载小雅emby/jellyfin老G速装版\033[0m"
         echo -e "\n"
         echo -e "\033[1;32m2、更换开心版小雅EMBY\033[0m"
         echo -e "\n"
@@ -1715,7 +1477,7 @@ user_selecto() {
         echo -e "\n"
         echo -e "\033[1;32m4、老G速装版镜像重装/同步config\033[0m"
         echo -e "\n"
-        echo -e "\033[1;32m5、G-box自动更新/取消自动更新\033[0m"
+        echo -e "\033[1;32m5、老G的alist/G-box自动更新\033[0m"
         echo -e "\n"
         echo -e "\033[1;32m6、速装emby/jellyfin镜像扩容\033[0m"
         echo -e "\n"
@@ -1768,11 +1530,9 @@ function sync_plan() {
         clear
         echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
         echo -e "\n"
-        echo -e "\033[1;32m请输入您的选择：\033[0m"
-        echo -e "\033[1;32m1、设置G-Box自动更新\033[0m"
-        echo -e "\033[1;32m2、取消G-Box自动更新\033[0m"
-        echo -e "\n"
-        echo -e "\033[1;32m3、立即更新G-Box\033[0m"
+        echo -e "\033[1;32m请输入您要设置自动更新的容器：\033[0m"
+        echo -e "\033[1;32m1、g-box\033[0m"
+        echo -e "\033[1;32m2、xiaoya_jf\033[0m"
         echo -e "\n"
         echo -e "——————————————————————————————————————————————————————————————————————————————————"
         read -erp "输入序号：（1/2）" user_select_sync_ailg
@@ -1783,24 +1543,9 @@ function sync_plan() {
             break
             ;;
         2)
-            if [[ -f /etc/synoinfo.conf ]]; then
-                sed -i '/xy_install/d' /etc/crontab
-                INFO "已取消G-Box自动更新"
-            else
-                crontab -l | grep -v xy_install > /tmp/cronjob.tmp
-                crontab /tmp/cronjob.tmp
-                rm -f /tmp/cronjob.tmp
-                INFO "已取消G-Box自动更新"
-            fi
+            docker_name="xiaoya_jf"
+            image_name="ailg/alist:hostmode"
             break
-            ;;
-        3)
-            docker_name="$(docker ps -a | grep -E 'ailg/g-box' | awk '{print $NF}' | head -n1)"
-            if [ -n "${docker_name}" ]; then
-                /bin/bash -c "$(curl -sSLf https://gbox.ggbond.org/xy_install.sh)" -s "${docker_name}"
-            else
-                ERROR "未找到G-Box容器，请先安装G-Box！"
-            fi
             ;;
         *)
             ERROR "输入错误，按任意键重新输入！"
@@ -1832,7 +1577,7 @@ function sync_plan() {
     [ -z "${config_dir}" ] && ERROR "未找到${docker_name}的挂载目录，请检查！" && exit 1
     if command -v crontab >/dev/null 2>&1; then
         crontab -l | grep -v xy_install > /tmp/cronjob.tmp
-        echo "$minu $hour */${sync_day} * * /bin/bash -c \"\$(curl -sSLf https://gbox.ggbond.org/xy_install.sh)\" -s "${docker_name}" | tee ${config_dir}/cron.log" >> /tmp/cronjob.tmp
+        echo "$minu $hour */${sync_day} * * /bin/bash -c \"\$(curl -sSLf https://xy.ggbond.org/xy/xy_install.sh)\" -s "${docker_name}" | tee ${config_dir}/cron.log" >> /tmp/cronjob.tmp
         crontab /tmp/cronjob.tmp
         chmod 777 ${config_dir}/cron.log
         echo -e "\n"
@@ -1850,7 +1595,7 @@ function sync_plan() {
         echo -e "\033[1;35m已创建/etc/crontab.bak备份文件！\033[0m"
         
         sed -i '/xy_install/d' /etc/crontab
-        echo "$minu $hour */${sync_day} * * root /bin/bash -c \"\$(curl -sSLf https://gbox.ggbond.org/xy_install.sh)\" -s "${docker_name}" | tee ${config_dir}/cron.log" >> /etc/crontab
+        echo "$minu $hour */${sync_day} * * root /bin/bash -c \"\$(curl -sSLf https://xy.ggbond.org/xy/xy_install.sh)\" -s "${docker_name}" | tee ${config_dir}/cron.log" >> /etc/crontab
         chmod 777 ${config_dir}/cron.log
         echo -e "\n"
         echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
@@ -1868,7 +1613,7 @@ function sync_plan() {
 function sync_ailg() {
     if [ "$1" == "g-box" ]; then
         image_name="ailg/g-box:hostmode"
-        docker_name="$(docker ps -a | grep -E 'ailg/g-box' | awk '{print $NF}' | head -n1)"
+        docker_name="g-box"
     elif [ "$1" == "xiaoya_jf" ]; then
         image_name="ailg/alist:hostmode"
         docker_name="xiaoya_jf"
@@ -1974,7 +1719,7 @@ function main() {
     echo -e "1、本脚本为G-Box/小雅Jellyfin/Emby全家桶的安装脚本，使用于群晖系统环境，不保证其他系统通用；"
     echo -e "2、本脚本为个人自用，不维护，不更新，不保证适用每个人的环境，请勿用于商业用途；"
     echo -e "3、作者不对使用本脚本造成的任何后果负责，有任何顾虑，请勿运行，按CTRL+C立即退出；"
-    echo -e "4、如果您喜欢这个脚本，可以请我喝咖啡：https://gbox.ggbond.org/3q.jpg\033[0m"
+    echo -e "4、如果您喜欢这个脚本，可以请我喝咖啡：https://xy.ggbond.org/xy/3q.jpg\033[0m"
     echo -e "————————————————————————————————————\033[1;33m安  装  状  态\033[0m————————————————————————————————"
     echo -e "\e[0m"
     echo -e "G-Box：${st_gbox}      小雅ALIST老G版：${st_alist}     小雅姐夫（jellyfin）：${st_jf}      小雅emby：${st_emby}"
@@ -2021,7 +1766,7 @@ function main() {
         user_selecto
         ;;
     [Qq])
-        return 0
+        exit 0
         ;;
     *)
         ERROR "输入错误，按任意键重新输入！"
@@ -2169,16 +1914,14 @@ fuck_docker() {
     echo -e "\033[1;37m5、代理测速正常2-3分钟左右，如某个代理测速卡很久，可按CTRL+C键终止执行，检查网络后重试（如DNS等）！\033[0m"
     echo -e "\033[1;33m6、仅首次运行或docker_mirrors.txt文件不存在或文件中代理失效时需要测速！为了后续顺利安装请耐心等待！\033[0m"
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
-    read -erp "$(echo -e "\033[1;32m跳过测速将使用您当前网络和环境设置直接拉取镜像，是否跳过？（Y/N）\n\033[0m")" skip_choose_mirror
+    read -n 1 -s -p "$(echo -e "\033[1;32m按任意键继续！\n\033[0m")"
 }
 
 if [ "$1" == "g-box" ] || [ "$1" == "xiaoya_jf" ]; then
     sync_ailg "$1"
 else
     fuck_docker
-    if ! [[ "$skip_choose_mirror" == [Yy] ]]; then
-        choose_mirrors
-    fi
+    choose_mirrors
     main
 fi
 
