@@ -728,24 +728,55 @@ check_loop_support() {
  }
 
  check_qnap() {
-    if grep -Eqi "QNAP" /etc/issue; then
+    if grep -Eqi "QNAP" /etc/issue > /dev/null; then
         INFO "检测到您是QNAP威联通系统，正在尝试更新安装环境，以便速装emby/jellyfin……"
-        wget -O - http://bin.entware.net/x64-k3.2/installer/generic.sh | sh
-        echo 'export PATH=$PATH:/opt/bin:/opt/sbin' >> ~/.profile
-        source ~/.profile
-        mv /bin/mount /bin/mount.bak
-        mv /bin/umount /bin/umount.bak
-        mv /usr/local/sbin/losetup /usr/local/sbin/losetup.bak
+        
+        if ! command -v opkg &> /dev/null; then
+            wget -O - http://bin.entware.net/x64-k3.2/installer/generic.sh | sh
+            echo 'export PATH=$PATH:/opt/bin:/opt/sbin' >> ~/.profile
+            source ~/.profile
+        fi
+
+        [ -f /bin/mount ] && mv /bin/mount /bin/mount.bak
+        [ -f /bin/umount ] && mv /bin/umount /bin/umount.bak
+        [ -f /usr/local/sbin/losetup ] && mv /usr/local/sbin/losetup /usr/local/sbin/losetup.bak
+
         opkg update
-        opkg install util-linux
-        opkg install mount-utils
-        opkg install losetup
-        cp /opt/bin/mount /bin/mount
-        cp /opt/bin/umount /bin/umount
-        cp /opt/bin/losetup /usr/local/sbin/losetup
-        INFO "已完成安装环境更新！"
+
+        for pkg in util-linux mount-utils losetup; do
+            success=false
+            for i in {1..3}; do
+                if opkg install $pkg; then
+                    success=true
+                    break
+                else
+                    INFO "尝试安装 $pkg 失败，重试中 ($i/3)..."
+                fi
+            done
+            if [ "$success" = false ]; then
+                INFO "$pkg 安装失败，恢复备份文件并退出脚本。"
+                [ -f /bin/mount.bak ] && mv /bin/mount.bak /bin/mount
+                [ -f /bin/umount.bak ] && mv /bin/umount.bak /bin/umount
+                [ -f /usr/local/sbin/losetup.bak ] && mv /usr/local/sbin/losetup.bak /usr/local/sbin/losetup
+                exit 1
+            fi
+        done
+
+        if [ -f /opt/bin/mount ] && [ -f /opt/bin/umount ] && [ -f /opt/bin/losetup ]; then
+            cp /opt/bin/mount /bin/mount
+            cp /opt/bin/umount /bin/umount
+            cp /opt/bin/losetup /usr/local/sbin/losetup
+            INFO "已完成安装环境更新！"
+        else
+            INFO "安装文件缺失，恢复备份文件并退出脚本。"
+            [ -f /bin/mount.bak ] && mv /bin/mount.bak /bin/mount
+            [ -f /bin/umount.bak ] && mv /bin/umount.bak /bin/umount
+            [ -f /usr/local/sbin/losetup.bak ] && mv /usr/local/sbin/losetup.bak /usr/local/sbin/losetup
+            exit 1
+        fi
     fi
- }
+}
+
 
 function user_select4() {
     down_img() {
