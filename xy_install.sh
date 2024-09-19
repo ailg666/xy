@@ -698,12 +698,19 @@ check_loop_support() {
 
     if ls -al /dev/loop7 > /dev/null 2>&1; then
         if losetup /dev/loop7; then
-            imgs=("emby-ailg.img" "emby-ailg-lite.img" "jellyfin-ailg.img" "jellyfin-ailg-lite.img" "emby-ailg-115.img" "emby-ailg-lite-115.img" "media.img")
+            imgs=("emby-ailg.img" "emby-ailg-lite.img" "jellyfin-ailg.img" "jellyfin-ailg-lite.img" "emby-ailg-115.img" "emby-ailg-lite-115.img" "media.img" "/")
             contains=false
             for img in "${imgs[@]}"; do
-                if losetup /dev/loop7 | grep -q "$img"; then
-                    contains=true
-                    break
+                if [ "$img" = "/" ]; then
+                    if losetup /dev/loop7 | grep -q "^/$"; then
+                        contains=true
+                        break
+                    fi
+                else
+                    if losetup /dev/loop7 | grep -q "$img"; then
+                        contains=true
+                        break
+                    fi
                 fi
             done
 
