@@ -1058,7 +1058,8 @@ function user_select4() {
                 -e UID=0 -e GID=0 -e GIDLIST=0 \
                 --net=host \
                 --privileged --add-host="xiaoya.host:127.0.0.1" --restart always $emby_image
-            echo "http://127.0.0.1:6908" > $config_dir/emby_server.txt   
+            echo "http://127.0.0.1:6908" > $config_dir/emby_server.txt
+            fuck_cors "$emby_name"
         elif [[ "${emby_image}" =~ jellyfin/jellyfin ]]; then
             docker run -d --name $emby_name -v /etc/nsswitch.conf:/etc/nsswitch.conf \
                 -v $image_dir/$emby_img:/media.img \
@@ -1200,6 +1201,12 @@ function user_select4() {
             fi
         fi
     fi
+}
+
+fuck_cors() {
+    emby_name=${1:-emby}
+    docker exec $emby_name sh -c "cp /system/dashboard-ui/modules/htmlvideoplayer/plugin.js /system/dashboard-ui/modules/htmlvideoplayer/plugin.js_backup && sed -i 's/&&(elem\.crossOrigin=initialSubtitleStream)//g' /system/dashboard-ui/modules/htmlvideoplayer/plugin.js"
+    docker exec $emby_name sh -c "cp /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js_backup && sed -i 's/mediaSource\.IsRemote&&"DirectPlay"===playMethod?null:"anonymous"/null/g' /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js"
 }
 
 general_uninstall() {
@@ -1455,6 +1462,7 @@ happy_emby() {
                         --user 0:0 \
                         --net=host \
                         --privileged --add-host="xiaoya.host:$xiaoya_host" --restart always ${emby_image}
+                        fuck_cors "${happy_name}"
                     break
                 else
                     ERROR "您输入的序号无效，请输入一个在 1 到 ${#img_order[@]} 之间的数字。"
