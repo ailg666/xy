@@ -751,7 +751,7 @@ check_loop_support() {
  }
 
  check_qnap() {
-    if grep -Eqi "QNAP" /etc/issue > /dev/null; then
+    if grep -Eqi "QNAP" /etc/issue > /dev/null 2>&1; then
         INFO "检测到您是QNAP威联通系统，正在尝试更新安装环境，以便速装emby/jellyfin……"
         
         if ! command -v opkg &> /dev/null; then
