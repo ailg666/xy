@@ -315,31 +315,47 @@ meta_select() {
 }
 
 get_emby_status() {
-    declare -gA emby_list
-    declare -ga emby_order
+    emby_list=()
+    emby_order=()
+
+    if command -v mktemp > /dev/null; then
+        temp_file=$(mktemp)
+    else
+        temp_file="/tmp/tmp_img"
+    fi
+    docker ps -a | grep -E "${search_img}" | awk '{print $1}' > "$temp_file"
 
     while read -r container_id; do
         if docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -qE "/xiaoya$ /media|\.img /media\.img"; then
             container_name=$(docker ps -a --format '{{.Names}}' --filter "id=$container_id")
             host_path=$(docker inspect --format '{{ range .Mounts }}{{ println .Source }}{{ end }}' $container_id | grep -E "/xiaoya$|\.img\b")
-            emby_list[$container_name]=$host_path
+            emby_list+=("$container_name:$host_path")
             emby_order+=("$container_name")
         fi
-    done < <(docker ps -a | grep -E "${search_img}" | awk '{print $1}')
+    done < "$temp_file"
+
+    rm "$temp_file"
 
     if [ ${#emby_list[@]} -ne 0 ]; then
         echo -e "\033[1;37m默认会关闭以下您已安装的小雅emby/jellyfin容器，并删除名为emby/jellyfin_xy的容器！\033[0m"
         for index in "${!emby_order[@]}"; do
             name=${emby_order[$index]}
-            printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index + 1)) $name ${emby_list[$name]}
+            for entry in "${emby_list[@]}"; do
+                if [[ $entry == $name:* ]]; then
+                    host_path=${entry#*:}
+                    printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index + 1)) $name $host_path
+                fi
+            done
         done
     fi
 }
+
 
 #镜像代理的内容抄的DDSRem大佬的，适当修改了一下
 function docker_pull() {
     if ! [[ "$skip_choose_mirror" == [Yy] ]]; then
         mirrors=()
+        [ -z "${config_dir}" ] && get_config_path
         INFO "正在从${config_dir}/docker_mirrors.txt文件获取代理点配置……"
         while IFS= read -r line; do
             mirrors+=("$line")
@@ -944,17 +960,23 @@ function user_select4() {
     # done
     docker ps -a | grep 'ddsderek/xiaoya-emd' | awk '{print $1}' | xargs docker stop
     if [ ${#emby_list[@]} -ne 0 ]; then
-        for op_emby in "${!emby_list[@]}"; do
+        for entry in "${emby_list[@]}"; do
+            op_emby=${entry%%:*} 
+            host_path=${entry#*:} 
+
             docker stop "${op_emby}"
             INFO "${op_emby}容器已关闭！"
-            if [[ "${emby_list[$op_emby]}" =~ .*\.img ]]; then
-                mount | grep "${emby_list[$op_emby]%/*}/emby-xy" && umount "${emby_list[$op_emby]%/*}/emby-xy" && losetup -d "${loop_order}"
+
+            if [[ "${host_path}" =~ .*\.img ]]; then
+                mount | grep "${host_path%/*}/emby-xy" && umount "${host_path%/*}/emby-xy" && losetup -d "${loop_order}"
             else
-                mount | grep "${emby_list[$op_emby]%/*}" && umount "${emby_list[$op_emby]%/*}"
+                mount | grep "${host_path%/*}" && umount "${host_path%/*}"
             fi
+
             [[ "${op_emby}" == "${del_name}" ]] && docker rm "${op_emby}" && INFO "${op_emby}容器已删除！"
         done
     fi
+
     #$del_emby && emby_name=${del_name} || emby_name="${del_name}-ailg"
     emby_name=${del_name}
     mkdir -p "$image_dir/emby-xy" && media_dir="$image_dir/emby-xy"
@@ -1290,32 +1312,56 @@ img_uninstall() {
     read -erp "请输入：" clear_img
     [[ ! "${clear_img}" =~ ^[Nn]$ ]] && clear_img="y"
 
-    declare -ga img_order
+    # declare -ga img_order
+    img_order=()
     search_img="emby/embyserver|amilys/embyserver|nyanmisaka/jellyfin|jellyfin/jellyfin"
+    check_qnap
+    # check_loop_support
     get_emby_status > /dev/null
     if [ ${#emby_list[@]} -ne 0 ]; then
-        for op_emby in "${!emby_list[@]}"; do
+        for entry in "${emby_list[@]}"; do
+            op_emby=${entry%%:*}
+            host_path=${entry#*:}
+
             if docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' "${op_emby}" | grep -qE "\.img /media\.img"; then
                 img_order+=("${op_emby}")
             fi
         done
+
         if [ ${#img_order[@]} -ne 0 ]; then
             echo -e "\033[1;37m请选择你要卸载的老G速装版emby：\033[0m"
             for index in "${!img_order[@]}"; do
                 name=${img_order[$index]}
-                printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index + 1)) $name ${emby_list[$name]}
+                host_path=""
+                for entry in "${emby_list[@]}"; do
+                    if [[ $entry == $name:* ]]; then
+                        host_path=${entry#*:}
+                        break
+                    fi
+                done
+                printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index + 1)) $name $host_path
             done
+
             while :; do
                 read -erp "输入序号：" img_select
                 if [ "${img_select}" -gt 0 ] && [ "${img_select}" -le ${#img_order[@]} ]; then
-                    img_path=${emby_list[${img_order[$((img_select - 1))]}]}
                     emby_name=${img_order[$((img_select - 1))]}
+                    img_path=""
+                    for entry in "${emby_list[@]}"; do
+                        if [[ $entry == $emby_name:* ]]; then
+                            img_path=${entry#*:}
+                            break
+                        fi
+                    done
+
                     for op_emby in "${img_order[@]}"; do
                         docker stop "${op_emby}"
                         INFO "${op_emby}容器已关闭！"
                     done
+
                     docker ps -a | grep 'ddsderek/xiaoya-emd' | awk '{print $1}' | xargs docker stop
                     INFO "小雅爬虫容器已关闭！"
+
                     if [[ $(basename "${img_path}") == emby*.img ]]; then
                         loop_order=/dev/loop7
                         docker rm xiaoya-emd
@@ -1323,10 +1369,12 @@ img_uninstall() {
                         loop_order=/dev/loop6
                         docker rm xiaoya-emd-jf
                     fi
+
                     umount "${loop_order}" > /dev/null 2>&1
                     losetup -d "${loop_order}" > /dev/null 2>&1
                     mount | grep -qF "${img_mount}" && umount "${img_mount}"
                     docker rm ${emby_name}
+
                     if [[ "${clear_img}" =~ ^[Yy]$ ]]; then
                         rm -f "${img_path}"
                         if [ -n "${img_path%/*}" ]; then
@@ -1347,30 +1395,53 @@ img_uninstall() {
     else
         INFO "您未安装任何老G速装版emby，程序退出！" && exit 1
     fi
+
 }
 
 happy_emby() {
-    declare -ga img_order
+    # declare -ga img_order
+    img_order=()
     get_emby_happy_image
+    check_qnap
+    # check_loop_support
     get_emby_status > /dev/null
     if [ ${#emby_list[@]} -ne 0 ]; then
-        for op_emby in "${!emby_list[@]}"; do
+        for entry in "${emby_list[@]}"; do
+            op_emby=${entry%%:*}
+            host_path=${entry#*:}
+
             if docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' "${op_emby}" | grep -qE "\.img /media\.img"; then
                 img_order+=("${op_emby}")
             fi
         done
+
         if [ ${#img_order[@]} -ne 0 ]; then
             echo -e "\033[1;37m请选择你要换装/重装开心版的emby！\033[0m"
             for index in "${!img_order[@]}"; do
                 name=${img_order[$index]}
-                printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index + 1)) $name ${emby_list[$name]}
+                host_path=""
+                for entry in "${emby_list[@]}"; do
+                    if [[ $entry == $name:* ]]; then
+                        host_path=${entry#*:}
+                        break
+                    fi
+                done
+                printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index + 1)) $name $host_path
             done
+
             while :; do
                 read -erp "输入序号：" img_select
                 if [ "${img_select}" -gt 0 ] && [ "${img_select}" -le ${#img_order[@]} ]; then
                     happy_name=${img_order[$((img_select - 1))]}
-                    happy_path=${emby_list[${happy_name}]}
-                    docker stop "${happy_name}" && docker rm "${happy_name}"
+                    happy_path=""
+                    for entry in "${emby_list[@]}"; do
+                        if [[ $entry == $happy_name:* ]]; then
+                            happy_path=${entry#*:}
+                            break
+                        fi
+                    done
+
+                    docker rm -f "${happy_name}"
                     INFO "旧的${happy_name}容器已删除！"
                     INFO "开始安装小雅emby……"
                     xiaoya_host="127.0.0.1"
@@ -1411,8 +1482,11 @@ get_img_path() {
 }
 
 mount_img() {
-    declare -ga img_order
+    # declare -ga img_order
+    img_order=()
     search_img="emby/embyserver|amilys/embyserver|nyanmisaka/jellyfin|jellyfin/jellyfin"
+    check_qnap
+    # check_loop_support
     get_emby_status > /dev/null
     update_ailg ailg/ggbond:latest
     if [ ! -f /usr/bin/mount_ailg ]; then
@@ -1420,37 +1494,59 @@ mount_img() {
         chmod 777 /usr/bin/mount_ailg
     fi
     if [ ${#emby_list[@]} -ne 0 ]; then
-        for op_emby in "${!emby_list[@]}"; do
+        for entry in "${emby_list[@]}"; do
+            op_emby=${entry%%:*}
+            host_path=${entry#*:}
+
             if docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' "${op_emby}" | grep -qE "\.img /media\.img"; then
                 img_order+=("${op_emby}")
             fi
         done
+
         if [ ${#img_order[@]} -ne 0 ]; then
             echo -e "\033[1;37m请选择你要挂载的镜像：\033[0m"
             for index in "${!img_order[@]}"; do
                 name=${img_order[$index]}
-                printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index + 1)) $name ${emby_list[$name]}
+                host_path=""
+                for entry in "${emby_list[@]}"; do
+                    if [[ $entry == $name:* ]]; then
+                        host_path=${entry#*:}
+                        break
+                    fi
+                done
+                printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 媒体库路径: \033[1;33m%s\033[0m\n" $((index + 1)) $name $host_path
             done
             printf "[ 0 ] \033[1;33m手动输入需要挂载的老G速装版镜像的完整路径\n\033[0m"
+
             while :; do
                 read -erp "输入序号：" img_select
                 if [ "${img_select}" -gt 0 ] && [ "${img_select}" -le ${#img_order[@]} ]; then
-                    img_path=${emby_list[${img_order[$((img_select - 1))]}]}
-                    img_mount=${img_path%/*.img}/emby-xy
                     emby_name=${img_order[$((img_select - 1))]}
+                    img_path=""
+                    for entry in "${emby_list[@]}"; do
+                        if [[ $entry == $emby_name:* ]]; then
+                            img_path=${entry#*:}
+                            break
+                        fi
+                    done
+                    img_mount=${img_path%/*.img}/emby-xy
+
                     for op_emby in "${img_order[@]}"; do
                         docker stop "${op_emby}"
                         INFO "${op_emby}容器已关闭！"
                     done
+
                     docker ps -a | grep 'ddsderek/xiaoya-emd' | awk '{print $1}' | xargs docker stop
                     INFO "小雅爬虫容器已关闭！"
+
                     [[ $(basename "${img_path}") == emby*.img ]] && loop_order=/dev/loop7 || loop_order=/dev/loop6
                     umount "${loop_order}" > /dev/null 2>&1
                     losetup -d "${loop_order}" > /dev/null 2>&1
                     mount | grep -qF "${img_mount}" && umount "${img_mount}"
-                    #sleep 3
+
                     docker start ${emby_name}
                     sleep 5
+
                     if ! docker ps --format '{{.Names}}' | grep -q "^${emby_name}$"; then
                         if mount_ailg "${img_path}" "${img_mount}"; then
                             INFO "已将${img_path}挂载到${img_mount}目录！"
@@ -1460,6 +1556,7 @@ mount_img() {
                             exit 1
                         fi
                     fi
+
                     if mount "${loop_order}" ${img_mount}; then
                         INFO "已将${Yellow}${img_path}${NC}挂载到${Yellow}${img_mount}${NC}目录！" && WARN "如您想操作小雅config数据的同步或更新，请先手动关闭${Yellow}${emby_name}${NC}容器！"
                     else
@@ -1500,8 +1597,11 @@ mount_img() {
 }
 
 expand_img() {
-    declare -ga img_order
+    # declare -ga img_order
+    img_order=()
     search_img="emby/embyserver|amilys/embyserver|nyanmisaka/jellyfin|jellyfin/jellyfin"
+    check_qnap
+    # check_loop_support
     get_emby_status > /dev/null
     update_ailg ailg/ggbond:latest
     if [ ! -f /usr/bin/mount_ailg ]; then
@@ -1509,26 +1609,45 @@ expand_img() {
         chmod 777 /usr/bin/mount_ailg
     fi
     if [ ${#emby_list[@]} -ne 0 ]; then
-        for op_emby in "${!emby_list[@]}"; do
+        for entry in "${emby_list[@]}"; do
+            op_emby=${entry%%:*}
+            host_path=${entry#*:}
+
             if docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' "${op_emby}" | grep -qE "\.img /media\.img"; then
                 img_order+=("${op_emby}")
             fi
         done
+
         if [ ${#img_order[@]} -ne 0 ]; then
             echo -e "\033[1;37m请选择你要扩容的镜像：\033[0m"
             for index in "${!img_order[@]}"; do
                 name=${img_order[$index]}
-                printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 镜像路径: \033[1;33m%s\033[0m\n" $((index + 1)) $name ${emby_list[$name]}
+                host_path=""
+                for entry in "${emby_list[@]}"; do
+                    if [[ $entry == $name:* ]]; then
+                        host_path=${entry#*:}
+                        break
+                    fi
+                done
+                printf "[ %-1d ] 容器名: \033[1;33m%-20s\033[0m 镜像路径: \033[1;33m%s\033[0m\n" $((index + 1)) $name $host_path
             done
             printf "[ 0 ] \033[1;33m手动输入需要扩容的老G速装版镜像的完整路径\n\033[0m"
+
             while :; do
                 read -erp "输入序号：" img_select
                 WARN "注：扩容后的镜像体积不能超过物理磁盘空间的70%！当前安装完整小雅emby扩容后镜像不低于160G！建议扩容至200G及以上！"
                 read -erp "输入您要扩容的大小（单位：GB）：" expand_size
                 if [ "${img_select}" -gt 0 ] && [ "${img_select}" -le ${#img_order[@]} ]; then
-                    img_path=${emby_list[${img_order[$((img_select - 1))]}]}
-                    img_mount=${img_path%/*.img}/emby-xy
                     emby_name=${img_order[$((img_select - 1))]}
+                    img_path=""
+                    for entry in "${emby_list[@]}"; do
+                        if [[ $entry == $emby_name:* ]]; then
+                            img_path=${entry#*:}
+                            break
+                        fi
+                    done
+                    img_mount=${img_path%/*.img}/emby-xy
+
                     expand_diy_img_path
                     break
                 elif [ "${img_select}" -eq 0 ]; then
@@ -2148,8 +2267,9 @@ choose_mirrors() {
         "docker.1panel.live"
         "docker.aidenxin.xyz"
         "dhub.kubesre.xyz"
-        )
-    declare -A mirror_total_delays
+    )
+    mirror_total_delays=()
+
     if [ ! -f "${config_dir}/docker_mirrors.txt" ]; then
         echo -e "\033[1;32m正在进行代理测速，为您选择最佳代理……\033[0m"
         start_time=$SECONDS
@@ -2159,7 +2279,6 @@ choose_mirrors() {
             INFO "${mirrors[i]}代理点测速中……"
             for n in {1..3}; do
                 output=$(
-                    #curl -s -o /dev/null -w '%{time_total}' --head --request GET --connect-timeout 10 "${mirrors[$i]}"
                     curl -s -o /dev/null -w '%{time_total}' --head --request GET -m 10 "${mirrors[$i]}"
                     [ $? -ne 0 ] && success=false && break
                 )
@@ -2167,30 +2286,31 @@ choose_mirrors() {
             done
             if $success && docker pull "${mirrors[$i]}/library/hello-world:latest" &> /dev/null; then
                 INFO "${mirrors[i]}代理可用，测试完成！"
-                mirror_total_delays["${mirrors[$i]}"]=$total_delay 
+                mirror_total_delays+=("${mirrors[$i]}:$total_delay")
                 docker rmi "${mirrors[$i]}/library/hello-world:latest" &> /dev/null
             else
                 INFO "${mirrors[i]}代理测试失败，将继续测试下一代理点！"
-                #break
             fi
         done
+
         if [ ${#mirror_total_delays[@]} -eq 0 ]; then
-            #echo "docker.io" > "${config_dir}/docker_mirrors.txt"
             echo -e "\033[1;31m所有代理测试失败，检查网络或配置可用代理后重新运行脚本，请从主菜单手动退出！\033[0m"
         else
-            sorted_mirrors=$(for k in "${!mirror_total_delays[@]}"; do echo $k ${mirror_total_delays["$k"]}; done | sort -n -k2)
-            echo "$sorted_mirrors" | head -n 2 | awk '{print $1}' > "${config_dir}/docker_mirrors.txt"
+            sorted_mirrors=$(for entry in "${mirror_total_delays[@]}"; do echo $entry; done | sort -t: -k2 -n)
+            echo "$sorted_mirrors" | head -n 2 | awk -F: '{print $1}' > "${config_dir}/docker_mirrors.txt"
             echo -e "\033[1;32m已为您选取两个最佳代理点并添加到了${config_dir}/docker_mirrors.txt文件中：\033[0m"
-            cat ${config_dir}/docker_mirrors.txt
+            cat "${config_dir}/docker_mirrors.txt"
         fi
-    end_time=$SECONDS
-    execution_time=$((end_time - start_time))
-    minutes=$((execution_time / 60))
-    seconds=$((execution_time % 60))
-    echo "代理测速用时：${minutes} 分 ${seconds} 秒"
-    read -n 1 -s -p "$(echo -e "\033[1;32m按任意键继续！\n\033[0m")"
+
+        end_time=$SECONDS
+        execution_time=$((end_time - start_time))
+        minutes=$((execution_time / 60))
+        seconds=$((execution_time % 60))
+        echo "代理测速用时：${minutes} 分 ${seconds} 秒"
+        read -n 1 -s -p "$(echo -e "\033[1;32m按任意键继续！\n\033[0m")"
     fi 
 }
+
 
 fuck_docker() {
     clear
@@ -2206,6 +2326,9 @@ fuck_docker() {
     read -erp "$(echo -e "\033[1;32m跳过测速将使用您当前网络和环境设置直接拉取镜像，是否跳过？（Y/N）\n\033[0m")" skip_choose_mirror
 }
 
+emby_list=()
+emby_order=()
+img_order=()
 if [ "$1" == "g-box" ] || [ "$1" == "xiaoya_jf" ]; then
     sync_ailg "$1"
 else
