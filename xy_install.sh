@@ -778,10 +778,10 @@ check_loop_support() {
             fi
         done
 
-        if [ -f /opt/bin/mount ] && [ -f /opt/bin/umount ] && [ -f /opt/bin/losetup ]; then
+        if [ -f /opt/bin/mount ] && [ -f /opt/bin/umount ] && [ -f /opt/sbin/losetup ]; then
             cp /opt/bin/mount /bin/mount
             cp /opt/bin/umount /bin/umount
-            cp /opt/bin/losetup /usr/local/sbin/losetup
+            cp /opt/sbin/losetup /usr/local/sbin/losetup
             INFO "已完成安装环境更新！"
         else
             INFO "安装文件缺失，恢复备份文件并退出脚本。"
