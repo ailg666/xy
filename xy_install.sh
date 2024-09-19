@@ -759,7 +759,7 @@ check_loop_support() {
 
         opkg update
 
-        for pkg in util-linux mount-utils losetup; do
+        for pkg in mount-utils losetup; do
             success=false
             for i in {1..3}; do
                 if opkg install $pkg; then
