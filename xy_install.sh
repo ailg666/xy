@@ -2366,7 +2366,7 @@ elif [ "$1" == "update_data" ]; then
 
             for ((i=1; i<=retries; i++)); do
                 if curl -s -O ${url_base}${file}; then
-                    echo "${file}下载成功"
+                    INFO "${file}下载成功"
                     if [[ ${file} == *.zip ]]; then
                         if [[ $(stat -c%s "${file}") -gt 500000 ]]; then
                             success=0
