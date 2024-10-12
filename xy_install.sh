@@ -2365,21 +2365,21 @@ elif [ "$1" == "update_data" ]; then
             local success=1
 
             for ((i=1; i<=retries; i++)); do
-                if curl -O ${url_base}${file}; then
+                if curl -s -O ${url_base}${file}; then
                     echo "${file}下载成功"
                     if [[ ${file} == *.zip ]]; then
                         if [[ $(stat -c%s "${file}") -gt 500000 ]]; then
                             success=0
                             break
                         else
-                            echo "${file}文件大小不足，重试..."
+                            WARN "${file}文件大小不足，重试..."
                         fi
                     else
                         success=0
                         break
                     fi
                 else
-                    echo "${file}下载失败，重试..."
+                    ERROR "${file}下载失败，重试..."
                 fi
             done
 
@@ -2392,16 +2392,17 @@ elif [ "$1" == "update_data" ]; then
                 docker cp ${file} ${docker_container}:${download_dir}
             else
                 all_success=0
-                echo "${file}下载失败，程序退出！"
+                ERROR "${file}下载失败，程序退出！"
                 exit 1
             fi
         done
 
         if [[ ${all_success} -eq 1 ]]; then
-            echo "所有文件更新成功，已为您重启G-Box容器，请检查！"
+            INFO "所有文件更新成功，已为您重启G-Box容器……"
             docker restart ${docker_container}
+            INFO "G-Box容器已成功重启，请检查！"
         else
-            echo "部分文件下载失败，程序退出！"
+            ERROR "部分文件下载失败，程序退出！"
             exit 1
         fi
     else
