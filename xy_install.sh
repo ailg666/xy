@@ -2389,6 +2389,7 @@ elif [ "$1" == "update_data" ]; then
         all_success=1
         for file in "${files[@]}"; do
             if download_file ${file}; then
+                docker exec ${docker_container} mkdir -p ${download_dir}
                 docker cp ${file} ${docker_container}:${download_dir}
             else
                 all_success=0
