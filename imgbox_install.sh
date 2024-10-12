@@ -435,6 +435,25 @@ fuck_docker() {
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
     read -n 1 -s -p "$(echo -e "\033[1;32m按任意键继续！\n\033[0m")"
 }
-fuck_docker
-choose_mirrors
-main
+if [ "$1" == "update_data" ]; then
+    INFO "正在为你更新小雅的data文件……"
+    docker_name="$(docker ps -a | grep -E 'ailg/g-box' | awk '{print $NF}' | head -n1)"
+    if [ -n "${docker_name}" ]; then
+        mkdir -p /www/data
+        cd /www/data
+        rm -rf ./*
+        if curl -O https://ailg.ggbond.org/version.txt; then echo "version.txt更新成功"; fi
+        if curl -O https://ailg.ggbond.org/index.zip; then echo "index.zip更新成功"; fi
+        if curl -O https://ailg.ggbond.org/update.zip; then echo "update.zip更新成功"; fi
+        if curl -O https://ailg.ggbond.org/tvbox.zip; then echo "tvbox.zip更新成功"; fi
+        exit 0
+    else
+        ERROR "未找到G-Box容器，程序退出！"
+        exit 1
+    fi
+
+else
+    fuck_docker
+    choose_mirrors
+    main
+fi
