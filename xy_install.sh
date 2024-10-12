@@ -2346,6 +2346,68 @@ emby_order=()
 img_order=()
 if [ "$1" == "g-box" ] || [ "$1" == "xiaoya_jf" ]; then
     sync_ailg "$1"
+elif [ "$1" == "update_data" ]; then
+    INFO "正在为你更新小雅的data文件……"
+    docker_name="$(docker ps -a | grep -E 'ailg/g-box' | awk '{print $NF}' | head -n1)"
+    if [ -n "${docker_name}" ]; then
+        files=("version.txt" "index.zip" "update.zip" "tvbox.zip")
+        url_base="https://ailg.ggbond.org/"
+        download_dir="/www/data"
+        docker_container="${docker_name}"
+
+        mkdir -p /tmp/data
+        cd /tmp/data
+        rm -rf /tmp/data/*
+
+        download_file() {
+            local file=$1
+            local retries=3
+            local success=1
+
+            for ((i=1; i<=retries; i++)); do
+                if curl -O ${url_base}${file}; then
+                    echo "${file}下载成功"
+                    if [[ ${file} == *.zip ]]; then
+                        if [[ $(stat -c%s "${file}") -gt 500000 ]]; then
+                            success=0
+                            break
+                        else
+                            echo "${file}文件大小不足，重试..."
+                        fi
+                    else
+                        success=0
+                        break
+                    fi
+                else
+                    echo "${file}下载失败，重试..."
+                fi
+            done
+
+            return ${success}
+        }
+
+        all_success=1
+        for file in "${files[@]}"; do
+            if download_file ${file}; then
+                docker cp ${file} ${docker_container}:${download_dir}
+            else
+                all_success=0
+                echo "${file}下载失败，程序退出！"
+                exit 1
+            fi
+        done
+
+        if [[ ${all_success} -eq 1 ]]; then
+            echo "所有文件更新成功，已为您重启G-Box容器，请检查！"
+            docker restart ${docker_container}
+        else
+            echo "部分文件下载失败，程序退出！"
+            exit 1
+        fi
+    else
+        ERROR "未找到G-Box容器，程序退出！"
+        exit 1
+    fi
 else
     fuck_docker
     if ! [[ "$skip_choose_mirror" == [Yy] ]]; then
