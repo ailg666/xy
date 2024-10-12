@@ -2398,7 +2398,7 @@ elif [ "$1" == "update_data" ]; then
         done
 
         if [[ ${all_success} -eq 1 ]]; then
-            INFO "所有文件更新成功，已为您重启G-Box容器……"
+            INFO "所有文件更新成功，正在为您重启G-Box容器……"
             docker restart ${docker_container}
             INFO "G-Box容器已成功重启，请检查！"
         else
