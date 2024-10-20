@@ -2345,6 +2345,11 @@ emby_list=()
 emby_order=()
 img_order=()
 if [ "$1" == "g-box" ] || [ "$1" == "xiaoya_jf" ]; then
+    config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "${1}")
+    [ $? -eq 1 ] && ERROR "您未安装${1}容器" && exit 1
+    if [ ! -f "{config_dir}/docker_mirrors.txt" ]; then
+        skip_choose_mirror="y"
+    fi
     sync_ailg "$1"
 elif [ "$1" == "update_data" ]; then
     INFO "正在为你更新小雅的data文件……"
