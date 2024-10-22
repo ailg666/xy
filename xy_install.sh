@@ -1953,7 +1953,6 @@ function sync_plan() {
         echo -e "\033[1;32m请输入您的选择：\033[0m"
         echo -e "\033[1;32m1、设置G-Box自动更新\033[0m"
         echo -e "\033[1;32m2、取消G-Box自动更新\033[0m"
-        echo -e "\n"
         echo -e "\033[1;32m3、立即更新G-Box\033[0m"
         echo -e "\n"
         echo -e "——————————————————————————————————————————————————————————————————————————————————"
@@ -1974,7 +1973,7 @@ function sync_plan() {
                 rm -f /tmp/cronjob.tmp
                 INFO "已取消G-Box自动更新"
             fi
-            break
+            exit 0
             ;;
         3)
             docker_name="$(docker ps -a | grep -E 'ailg/g-box' | awk '{print $NF}' | head -n1)"
@@ -1983,6 +1982,7 @@ function sync_plan() {
             else
                 ERROR "未找到G-Box容器，请先安装G-Box！"
             fi
+            exit 0
             ;;
         *)
             ERROR "输入错误，按任意键重新输入！"
