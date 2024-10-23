@@ -332,7 +332,7 @@ main() {
     if [ "$PORT" == "19798" ]; then
         docker run -d \
             --name clouddrive2 \
-            --restart unless-stopped \
+            --restart always \
             --env CLOUDDRIVE_HOME=/Config \
             -v "$INSTALL_PATH/media:/CloudNAS:shared" \
             -v "$INSTALL_PATH/config:/Config" \
@@ -344,7 +344,7 @@ main() {
     else
         docker run -d \
             --name clouddrive2 \
-            --restart unless-stopped \
+            --restart always \
             --env CLOUDDRIVE_HOME=/Config \
             -v "$INSTALL_PATH/media:/CloudNAS:shared" \
             -v "$INSTALL_PATH/config:/Config" \
@@ -355,10 +355,12 @@ main() {
     fi
 
     if [ $? -eq 0 ]; then
-    echo "clouddrive2 容器已成功运行"
+        INFO "clouddrive2 容器已成功运行"
+        local_ip=$(ip address | grep inet | grep -v 172.17 | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | sed 's/addr://' | head -n1 | cut -f1 -d"/")
+        INFO "请打开http://${local_ip}:${PORT}添加挂载"
     else
-    echo "clouddrive2 容器未能成功运行，请检查是否存在旧容器冲突"
-    exit 1
+        ERROR "clouddrive2 容器未能成功运行，请检查是否存在旧容器冲突"
+        exit 1
     fi
 
     daemon
