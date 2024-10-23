@@ -24,9 +24,9 @@ echo -e "1、本脚本为CloudDrive2的docker版安装脚本，用于Linux环境
 echo -e "2、本脚本为个人自用，不维护，不更新，不保证适用每个人的环境，请勿用于商业用途；"
 echo -e "3、作者不对使用本脚本造成的任何后果负责，有任何顾虑，请勿运行，按CTRL+C立即退出；"
 echo -e "4、如果您喜欢这个脚本，可以请我喝咖啡：https://gbox.ggbond.org/3q.jpg\033[0m"
-echo -e "————————————————————————————————————\033[1;33mA  I  老  G\033[0m————————————————————————————————"
+echo -e "—————————————————————————————————————\033[1;33mA   I  老  G\033[0m————————————————————————————————"
 
-WARN "卸载命令："
+INFO "卸载命令："
 echo -e "${Yellow}bash -c \"\$(curl -sSLf https://ailg.ggbond.org/cd2.sh)\" -s uninstall${NC}" 
 
 for dir in /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ~/bin /opt/homebrew/bin; do
@@ -47,7 +47,7 @@ function root_need() {
 }
 
 function ___install_docker() {
-    if ! which docker; then
+    if ! command -v docker >/dev/null 2>&1; then
         WARN "docker 未安装，脚本尝试自动安装..."
         wget -qO- get.docker.com | bash
         if which docker; then
