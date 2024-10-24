@@ -149,7 +149,7 @@ fuse3_install() {
 daemon() {
     if [[ "$os_type" == "Linux" ]]; then
         if [[ -f /etc/synoinfo.conf ]]; then
-            if ! [ -z "$(ls -A /volume1/@Entware/opt)" ]; then
+            if ! [ -z "$(ls -A /volume1/@Entware/opt > /dev/null 2>&1)" ]; then
                 cat <<EOF > /volume1/@Entware/opt/autostart_fuse3.sh
 #!/bin/sh
 mkdir -p /opt
@@ -267,9 +267,9 @@ uninstall() {
     if [[ -f /etc/synoinfo.conf ]]; then
         rm -f /usr/local/etc/rc.d/autostart_fuse3.sh
         sed -i '/\/opt\/etc\/profile/d' /etc/profile
-        if [ -d "/volume1/@Entware/opt" ]; then
-            rm -rf /volume1/@Entware/opt
-        fi
+        # if [ -d "/volume1/@Entware/opt" ]; then
+        #     rm -rf /volume1/@Entware/opt
+        # fi
     elif [ -e "/sbin/procd" ]; then
         /etc/init.d/clouddrive stop
         /etc/init.d/clouddrive disable
