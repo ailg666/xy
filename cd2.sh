@@ -178,8 +178,9 @@ mount --bind "$INSTALL_PATH/media" "$INSTALL_PATH/media" >> /tmp/cron.log
 mount --make-shared "$INSTALL_PATH/media" >> /tmp/cron.log
 EOF
                 chmod +x /usr/local/etc/rc.d/autostart_fuse3.sh
-                echo -e "\033[1;35m已创建开机自启动脚本/usr/local/etc/rc.d/autostart_fuse3.sh\033[0m"
-            fi         
+            fi
+            echo -e "\033[1;35m已创建开机自启动脚本/usr/local/etc/rc.d/autostart_fuse3.sh\033[0m"
+            INFO "好腻害！群晖你都能搞定！"         
         elif [ -e "/sbin/procd" ]; then
             touch /etc/init.d/clouddrive
             cat > /etc/init.d/clouddrive << EOF
@@ -201,6 +202,8 @@ EOF
             chmod +x /etc/init.d/clouddrive
             /etc/init.d/clouddrive start
             /etc/init.d/clouddrive enable
+            INFO "已成功创建docker共享挂载点开机自启动！"
+            INFO "安装成功！妈妈再也不用担心你重启断片了！"
         elif pidof systemd > /dev/null; then
             mkdir -p /etc/systemd/system/docker.service.d/
             cat > /etc/systemd/system/docker.service.d/clear_mount_propagation_flags.conf << EOF
@@ -209,6 +212,8 @@ MountFlags=shared
 EOF
             systemctl daemon-reload
             systemctl restart docker.service
+            INFO "已成功创建docker共享挂载点开机自启动！"
+            INFO "恭喜你安装成功了！"
         else
             echo -e "\033[1;31m不确定系统类型，请自行配置"${INSTALL_PATH}/media"目录共享挂载的开机自启动。\033[0m"
         fi
@@ -237,6 +242,7 @@ EOF
 EOF
         launchctl load -w /Library/LaunchDaemons/clouddrive.plist
         launchctl start /Library/LaunchDaemons/clouddrive.plist
+        INFO "厉害啊！这么快你就安装成功了！"
     fi
 }
 
@@ -244,7 +250,9 @@ uninstall() {
     read -p "是否保留CD2的配置文件? (y/n): " keep_config
     mount=$(docker inspect --format='{{range .Mounts}}{{if eq .Destination "/CloudNAS"}}{{.Source}}{{end}}{{end}}' clouddrive2)
     docker rm -f clouddrive2
-    fusermount3 -u "$mount"
+    if ! fusermount3 -u "$mount" > /dev/null 2>&1; then
+        umount -l "$mount"
+    fi
     if [[ "$keep_config" == [Nn] ]]; then
         rm -rf "$(dirname "$mount")/config"
     fi
