@@ -43,7 +43,6 @@ function ___install_docker() {
             exit 1
         fi
     fi
-
 }
 
 install_package() {
@@ -2123,10 +2122,37 @@ function user_gbox() {
         INFO "小雅g-box老G版配置路径为：$config_dir"
     fi
 
-    docker run -d --name=g-box --net=host \
-        -v "$config_dir":/data \
-        --restart=always \
-        ailg/g-box:hostmode
+    read -erp "$(INFO "是否打开docker容器管理功能？（y/n）")" open_warn
+    if [[ $open_warn == [Yy] ]]; then
+        echo -e "${Yellow}风险警示："
+        echo -e "打开docker容器管理功能会挂载/var/run/docker.sock！"
+        echo -e "想在G-Box首页Sun-Panel中管理docker容器必须打开此功能！！"
+        echo -e "想实现G-Box重启自动更新或添加G-Box自定义挂载必须打开此功能！！"
+        echo -e "${Red}打开此功能会获取所有容器操作权限，有一定安全风险，确保您有良好的风险防范意识和妥当操作能力，否则不要打开此功能！！！"
+        echo -e "如您已打开此功能想要关闭，请重新安装G-Box，重新进行此项选择！"
+        read -erp "$(WARN "是否继续开启docker容器管理功能？（y/n）")" open_sock
+    fi
+
+    if [[ $open_sock == [Yy] ]]; then
+        if [ -S /var/run/docker.sock ]; then
+            docker run -d --name=g-box --net=host \
+                -v "$config_dir":/data \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                --restart=always \
+                ailg/g-box:hostmode
+        else
+            WARN "您系统不存在/var/run/docker.sock，可能它在其他位置，请定位文件位置后自行挂载，此脚本不处理特殊情况！"
+            docker run -d --name=g-box --net=host \
+                -v "$config_dir":/data \
+                --restart=always \
+                ailg/g-box:hostmode
+        fi
+    else
+        docker run -d --name=g-box --net=host \
+                -v "$config_dir":/data \
+                --restart=always \
+                ailg/g-box:hostmode
+    fi
 
     if command -v ifconfig &> /dev/null; then
         localip=$(ifconfig -a|grep inet|grep -v 172. | grep -v 127.0.0.1|grep -v 169. |grep -v inet6|awk '{print $2}'|tr -d "addr:"|head -n1)
