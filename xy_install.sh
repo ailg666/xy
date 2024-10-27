@@ -43,6 +43,7 @@ function ___install_docker() {
             exit 1
         fi
     fi
+
 }
 
 install_package() {
@@ -2129,7 +2130,7 @@ function user_gbox() {
         echo -e "想在G-Box首页Sun-Panel中管理docker容器必须打开此功能！！"
         echo -e "想实现G-Box重启自动更新或添加G-Box自定义挂载必须打开此功能！！"
         echo -e "${Red}打开此功能会获取所有容器操作权限，有一定安全风险，确保您有良好的风险防范意识和妥当操作能力，否则不要打开此功能！！！"
-        echo -e "如您已打开此功能想要关闭，请重新安装G-Box，重新进行此项选择！"
+        echo -e "如您已打开此功能想要关闭，请重新安装G-Box，重新进行此项选择！${NC}"
         read -erp "$(WARN "是否继续开启docker容器管理功能？（y/n）")" open_sock
     fi
 
