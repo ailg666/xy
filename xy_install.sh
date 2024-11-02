@@ -1147,8 +1147,10 @@ function user_select4() {
     current_time=$(date +%s)
     elapsed_time=$(awk -v start=$start_time -v end=$current_time 'BEGIN {printf "%.2f\n", (end-start)/60}')
     INFO "${Blue}恭喜您！小雅emby/jellyfin安装完成，安装时间为 ${elapsed_time} 分钟！$NC"
-    INFO "请登陆${Blue} $host:2345/2346 ${NC}访问小雅emby/jellyfin，用户名：${Blue} xiaoya/ailg ${NC}，密码：${Blue} 1234/5678 ${NC}"
-    INFO "注：如果$host:6908/6909/5908/5909可访问，$host:2345/2346访问失败（502/500等错误），按如下步骤排障：\n\t1、检查$config_dir/emby/jellyfin_server.txt文件中的地址是否正确指向emby的访问地址，即：$host:6908/6909/5908/5909或http://127.0.0.1:6908/6909/5908/5909\n\t2、地址正确重启你的小雅alist容器即可。"
+    INFO "小雅emby请登陆${Blue} $host:2345 ${NC}访问，用户名：${Blue} xiaoya ${NC}，密码：${Blue} 1234 ${NC}"
+    INFO "小雅jellyfin请登陆${Blue} $host:2346 ${NC}访问，用户名：${Blue} ailg ${NC}，密码：${Blue} 5678 ${NC}"
+    INFO "注：Emby如果$host:6908可访问，而$host:2345访问失败（502/500等错误），按如下步骤排障：\n\t1、检查$config_dir/emby_server.txt文件中的地址是否正确指向emby的访问地址，即：$host:6908或http://127.0.0.1:6908\n\t2、地址正确重启你的小雅alist容器即可。"
+    INFO "注：Jellyfin如果$host:6909可访问（10.9.6版本端口为6910），而$host:2346访问失败（502/500等错误），按如下步骤排障：\n\t1、检查$config_dir/jellyfin_server.txt文件中的地址是否正确指向jellyfin的访问地址，即：$host:6909（10.9.6版是6910）或http://127.0.0.1:6909\n\t2、地址正确重启你的小雅alist容器即可。"
     echo -e "\n"
     echo -e "\033[1;33m是否继续安装小雅元数据爬虫同步？${NC}"
     answer=""
@@ -2078,7 +2080,11 @@ function sync_ailg() {
             exit 1
         fi
 
-        docker run -d --name "${docker_name}" --net=host --restart=always ${mounts} "${image_name}"
+        if docker run -d --name "${docker_name}" --net=host --restart=always ${mounts} "${image_name}"; then
+            INFO "Nice!更新成功了哦！"
+        else
+            WARN "竟然更新失败了！您可能需要重新安装G-Box！"
+        fi
     else
         ERROR "${docker_name} 容器未安装，程序退出！${NC}" && exit 1
     fi
