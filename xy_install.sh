@@ -188,7 +188,8 @@ function get_config_path() {
             if command -v jq > /dev/null 2>&1; then
                 config_dir=$(docker inspect $container_name | jq -r '.[].Mounts[] | select(.Destination=="/data") | .Source')
             else
-                config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "$container_name")
+                # config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "$container_name")
+                config_dir=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' "$container_name")
             fi
             results+=("$container_name $config_dir")
         done < <(docker ps -a | grep "$image")
@@ -490,7 +491,8 @@ function user_select1() {
         WARN "您已安装g-box，包含老G版alist的所有功能，无需重复安装！继续安装将自动卸载已安装的g-box容器！"
         read -erp "是否继续安装？（确认按Y/y，否则按任意键返回！）：" ow_install
         if [[ $ow_install == [Yy] ]]; then
-            config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "${docker_name}")
+            # config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "${docker_name}")
+            config_dir=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' "${docker_name}")
             INFO "正在停止和删除${docker_name}容器……"
             docker rm -f $docker_name
             INFO "$docker_name 容器已删除"
@@ -2302,7 +2304,8 @@ rm_alist() {
             WARN "本安装会删除原有的小雅alist容器，按任意键继续，或按CTRL+C退出！"
             read -r -n 1
             echo "Deleting container $container using image $image ..."
-            config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "$container")
+            # config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "$container")
+            config_dir=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' "$container")
             docker stop "$container"
             docker rm "$container"
             echo "Container $container has been deleted."
@@ -2392,7 +2395,8 @@ emby_list=()
 emby_order=()
 img_order=()
 if [ "$1" == "g-box" ] || [ "$1" == "xiaoya_jf" ]; then
-    config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "${1}")
+    # config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "${1}")
+    config_dir=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' "${1}")
     [ $? -eq 1 ] && ERROR "您未安装${1}容器" && exit 1
     if [ ! -f "{config_dir}/docker_mirrors.txt" ]; then
         skip_choose_mirror="y"
