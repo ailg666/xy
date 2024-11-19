@@ -2323,7 +2323,6 @@ choose_mirrors() {
         "docker.fxxk.dedyn.io"
         "docker.adysec.com"
         "registry-docker-hub-latest-9vqc.onrender.com"
-        "docker.chenby.cn"
         "dockerproxy.com"
         "hub.uuuadc.top"
         "docker.jsdelivr.fyi"
