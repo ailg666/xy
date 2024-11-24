@@ -2211,7 +2211,7 @@ function main() {
     echo -e "\033[1;35mo、有问题？选我看看\033[0m"
     echo -e "\n"
     echo -e "——————————————————————————————————————————————————————————————————————————————————"
-    read -erp "请输入您的选择（1-4或q退出）；" user_select
+    read -erp "请输入您的选择（1-5或q退出）；" user_select
     case $user_select in
     1)
         clear
