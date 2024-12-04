@@ -2068,6 +2068,8 @@ function sync_ailg() {
         mounts=$(docker inspect --format '{{ range .Mounts }}{{ if not .Name }}-v {{ .Source }}:{{ .Destination }} {{ end }}{{ end }}' "${docker_name}")
         docker rm -f "${docker_name}"
         current_sha=$(grep "${image_name}" "${config_dir}/ailg_sha.txt" | awk '{print $2}')
+        docker rmi "${image_name}:old" > /dev/null 2>&1
+        docker tag "${image_name}" "${image_name}:old"
         update_ailg "${image_name}"
         update_status=$?
         if [ ${update_status} -eq 0 ]; then
@@ -2077,13 +2079,20 @@ function sync_ailg() {
             else
                 echo "$(date): ${image_name} 镜像已升级" >> "${config_dir}/ailg_update.txt"
             fi
+            updated="true"
+            docker rmi "${image_name}:old"
         else
-            ERROR "更新 ${image_name} 镜像失败"
-            exit 1
+            ERROR "更新 ${image_name} 镜像失败，将为您恢复旧镜像和容器……"
+            docker tag  "${image_name}:old" "${image_name}"
+            updated="false"
         fi
 
         if docker run -d --name "${docker_name}" --net=host --restart=always ${mounts} "${image_name}"; then
-            INFO "Nice!更新成功了哦！"
+            if [ "${updated}" = "true" ]; then
+                INFO "Nice!更新成功了哦！"
+            else
+                WARN "${image_name} 镜像更新失败！已为您恢复旧镜像和容器！请检查网络或配置${config_dir}/docker_mirrors.txt代理文件后再次尝试更新！"
+            fi
         else
             WARN "竟然更新失败了！您可能需要重新安装G-Box！"
         fi
