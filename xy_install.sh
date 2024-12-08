@@ -2069,7 +2069,7 @@ function sync_ailg() {
         docker rm -f "${docker_name}"
         current_sha=$(grep "${image_name}" "${config_dir}/ailg_sha.txt" | awk '{print $2}')
         docker rmi "${image_name}:old" > /dev/null 2>&1
-        docker tag "${image_name}" "${image_name}:old"
+        docker tag "${image_name}" "${image_name%:hostmode}:old"
         update_ailg "${image_name}"
         update_status=$?
         if [ ${update_status} -eq 0 ]; then
@@ -2083,7 +2083,7 @@ function sync_ailg() {
             docker rmi "${image_name}:old"
         else
             ERROR "更新 ${image_name} 镜像失败，将为您恢复旧镜像和容器……"
-            docker tag  "${image_name}:old" "${image_name}"
+            docker tag  "${image_name%:hostmode}:old" "${image_name}"
             updated="false"
         fi
 
