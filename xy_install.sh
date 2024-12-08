@@ -478,7 +478,11 @@ update_ailg() {
         done
         if [ $retries -eq $max_retries ]; then
             ERROR "镜像拉取失败，已达到最大重试次数！"
-            exit 1
+            if [[ "$update_img" == "ailg/g-box:hostmode" ]]; then
+                return 1
+            else
+                exit 1
+            fi
         fi
     elif [ -z "$local_sha" ] &&  [ -z "$remote_sha" ]; then
         docker_pull "${update_img}"
@@ -2068,7 +2072,7 @@ function sync_ailg() {
         mounts=$(docker inspect --format '{{ range .Mounts }}{{ if not .Name }}-v {{ .Source }}:{{ .Destination }} {{ end }}{{ end }}' "${docker_name}")
         docker rm -f "${docker_name}"
         current_sha=$(grep "${image_name}" "${config_dir}/ailg_sha.txt" | awk '{print $2}')
-        docker rmi "${image_name}:old" > /dev/null 2>&1
+        docker rmi "${image_name%:hostmode}:old" > /dev/null 2>&1
         docker tag "${image_name}" "${image_name%:hostmode}:old"
         update_ailg "${image_name}"
         update_status=$?
@@ -2080,7 +2084,7 @@ function sync_ailg() {
                 echo "$(date): ${image_name} 镜像已升级" >> "${config_dir}/ailg_update.txt"
             fi
             updated="true"
-            docker rmi "${image_name}:old"
+            docker rmi "${image_name%:hostmode}:old"
         else
             ERROR "更新 ${image_name} 镜像失败，将为您恢复旧镜像和容器……"
             docker tag  "${image_name%:hostmode}:old" "${image_name}"
