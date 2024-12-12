@@ -423,7 +423,11 @@ function docker_pull() {
         else
             ERROR "已尝试docker_mirrors.txt中所有镜像代理拉取失败，程序将退出，请检查网络后再试！"
             WARN "如需重测速选择代理，请手动删除${config_dir}/docker_mirrors.txt文件后重新运行脚本！"
-            exit 1       
+            if [[ "${1}" == "ailg/g-box:hostmode" ]]; then
+                return 1
+            else
+                exit 1
+            fi     
         fi
     else
         tempfile="/tmp/tmp_sha"
