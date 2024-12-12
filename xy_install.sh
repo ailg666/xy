@@ -2410,7 +2410,7 @@ if [ "$1" == "g-box" ] || [ "$1" == "xiaoya_jf" ]; then
     # config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "${1}")
     config_dir=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' "${1}")
     [ $? -eq 1 ] && ERROR "您未安装${1}容器" && exit 1
-    if [ ! -f "{config_dir}/docker_mirrors.txt" ]; then
+    if [ ! -f "${config_dir}/docker_mirrors.txt" ]; then
         skip_choose_mirror="y"
     fi
     sync_ailg "$1"
