@@ -2194,6 +2194,8 @@ function user_gbox() {
 
     INFO "${Blue}哇塞！你的小雅g-box老G版安装完成了！$NC"
     INFO "${Blue}如果你没有配置mytoken.txt和myopentoken.txt文件，请登陆\033[1;35mhttp://${localip}:4567\033[0m网页在'账号-详情'中配置！$NC"
+    INFO "G-Box初始登陆${Green}用户名：admin\t密码：admin ${NC}"
+    INFO "内置sun-panel导航初始登陆${Green}用户名：ailg666\t\t密码：12345678 ${NC}"
 }
 
 function main() {
@@ -2407,9 +2409,18 @@ fuck_docker() {
     read -erp "$(echo -e "\033[1;32m跳过测速将使用您当前网络和环境设置直接拉取镜像，是否跳过？（Y/N）\n\033[0m")" skip_choose_mirror
 }
 
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        echo -e "${ERROR} 此脚本必须以 root 身份运行！"
+        echo -e "${INFO} 请在ssh终端输入命令 'sudo -i' 回车，再输入一次当前用户密码，切换到 root 用户后重新运行脚本。"
+        exit 1
+    fi
+}
+
 emby_list=()
 emby_order=()
 img_order=()
+
 if [ "$1" == "g-box" ] || [ "$1" == "xiaoya_jf" ]; then
     # config_dir=$(docker inspect --format '{{ (index .Mounts 0).Source }}' "${1}")
     config_dir=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' "${1}")
