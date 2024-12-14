@@ -2159,26 +2159,66 @@ function user_gbox() {
         read -erp "$(WARN "是否继续开启docker容器管理功能？（y/n）")" open_sock
     fi
 
+    # if [[ $open_sock == [Yy] ]]; then
+    #     if [ -S /var/run/docker.sock ]; then
+    #         docker run -d --name=g-box --net=host \
+    #             -v "$config_dir":/data \
+    #             -v /var/run/docker.sock:/var/run/docker.sock \
+    #             --restart=always \
+    #             ailg/g-box:hostmode
+    #     else
+    #         WARN "您系统不存在/var/run/docker.sock，可能它在其他位置，请定位文件位置后自行挂载，此脚本不处理特殊情况！"
+    #         docker run -d --name=g-box --net=host \
+    #             -v "$config_dir":/data \
+    #             --restart=always \
+    #             ailg/g-box:hostmode
+    #     fi
+    # else
+    #     docker run -d --name=g-box --net=host \
+    #             -v "$config_dir":/data \
+    #             --restart=always \
+    #             ailg/g-box:hostmode
+    # fi
+
+    local extra_volumes=""
+    if [ -s "$config_dir/diy_mount.txt" ]; then
+        while IFS=' ' read -r host_path container_path; do
+            if [[ -z "$host_path" || -z "$container_path" ]]; then
+                continue
+            fi
+
+            if [ ! -d "$host_path" ]; then
+                WARN "宿主机路径 $host_path 不存在，中止处理 diy_mount.txt 文件"
+                extra_volumes=""
+                break
+            fi
+
+            local reserved_paths=("/app" "/etc" "/sys" "/home" "/mnt" "/bin" "/data" "/dev" "/index" "/jre" "/lib" "/opt" "/proc" "/root" "/run" "/sbin" "/tmp" "/usr" "/var" "/www")
+            if [[ " ${reserved_paths[@]} " =~ " $container_path " ]]; then
+                WARN "容器路径 $container_path 是内部保留路径，中止处理 diy_mount.txt 文件"
+                extra_volumes=""
+                break
+            fi
+
+            extra_volumes+="-v $host_path:$container_path "
+        done < "$config_dir/diy_mount.txt"
+    fi
+
     if [[ $open_sock == [Yy] ]]; then
         if [ -S /var/run/docker.sock ]; then
-            docker run -d --name=g-box --net=host \
-                -v "$config_dir":/data \
-                -v /var/run/docker.sock:/var/run/docker.sock \
-                --restart=always \
-                ailg/g-box:hostmode
+            extra_volumes+="-v /var/run/docker.sock:/var/run/docker.sock"
         else
             WARN "您系统不存在/var/run/docker.sock，可能它在其他位置，请定位文件位置后自行挂载，此脚本不处理特殊情况！"
-            docker run -d --name=g-box --net=host \
-                -v "$config_dir":/data \
-                --restart=always \
-                ailg/g-box:hostmode
         fi
-    else
-        docker run -d --name=g-box --net=host \
-                -v "$config_dir":/data \
-                --restart=always \
-                ailg/g-box:hostmode
     fi
+
+    mkdir -p "$config_dir/data"
+    docker run -d --name=g-box --net=host \
+        -v "$config_dir":/data \
+        -v "$config_dir/data":/www/data \
+        --restart=always \
+        $extra_volumes \
+        ailg/g-box:hostmode
 
     if command -v ifconfig &> /dev/null; then
         localip=$(ifconfig -a|grep inet|grep -v 172. | grep -v 127.0.0.1|grep -v 169. |grep -v inet6|awk '{print $2}'|tr -d "addr:"|head -n1)
