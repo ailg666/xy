@@ -2375,21 +2375,15 @@ rm_alist() {
 choose_mirrors() {
     [ -z "${config_dir}" ] && get_config_path check_docker
     mirrors=(
-        "docker.io"
-        "docker.chenby.cn"
-        "docker.nastool.de"
-        "hub.rat.dev"
-        "docker.fxxk.dedyn.io"
-        "docker.adysec.com"
-        "registry-docker-hub-latest-9vqc.onrender.com"
-        "dockerproxy.com"
-        "hub.uuuadc.top"
-        "docker.jsdelivr.fyi"
-        "docker.registry.cyou"
-        "dockerhub.anzu.vip"
-        "docker.1panel.live"
-        "docker.aidenxin.xyz"
-        "dhub.kubesre.xyz"
+        docker.io
+        hub.rat.dev
+        dockerhub.ggbox.us.kg
+        nas.dockerimages.us.kg
+        docker.aidenxin.xyz
+        dockerhub.anzu.vip
+        docker.1panel.live
+        docker.nastool.de
+        docker.adysec.com
     )
     mirror_total_delays=()
 
