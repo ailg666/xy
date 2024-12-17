@@ -1980,6 +1980,8 @@ fix_docker() {
         fi
     done
 
+    REGISTRY_URLS_JSON=$(printf '%s\n' "${REGISTRY_URLS[@]}" | jq -R . | jq -s .)
+
     if [ -f /etc/synoinfo.conf ]; then
         DOCKER_ROOT_DIR=$(docker info | grep 'Docker Root Dir' | awk -F': ' '{print $2}')
         DOCKER_CONFIG_FILE="${DOCKER_ROOT_DIR%/@docker}/@appconf/ContainerManager/dockerd.json"
@@ -1996,9 +1998,9 @@ fix_docker() {
     cp $DOCKER_CONFIG_FILE $BACKUP_FILE
 
     if grep -q '"registry-mirrors"' $DOCKER_CONFIG_FILE; then
-        awk -v url="$REGISTRY_URL" '{gsub(/"registry-mirrors":\[[^]]*\]/, "\"registry-mirrors\":[\"" url "\"]")}1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
+        awk -v urls="$REGISTRY_URLS_JSON" '{gsub(/"registry-mirrors":\[[^]]*\]/, "\"registry-mirrors\":" urls)}1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
     else
-        awk -v url="$REGISTRY_URL" 'BEGIN {FS=OFS="{"} NR==1 {$2="\n  \"registry-mirrors\": [\"" url "\"], " $2} 1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
+        awk -v urls="$REGISTRY_URLS_JSON" 'BEGIN {FS=OFS="{"} NR==1 {$2="\n  \"registry-mirrors\": " urls ", " $2} 1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
     fi
 
     if [ -f /var/run/docker.pid ]; then
