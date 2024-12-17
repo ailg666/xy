@@ -32,7 +32,7 @@ echo -e "\033[1;33m正在执行修复，请稍候……\033[0m"
 REGISTRY_URLS_JSON=$(printf '%s\n' "${REGISTRY_URLS[@]}" | jq -R . | jq -s .)
 
 if [ -f /etc/synoinfo.conf ]; then
-    DOCKER_ROOT_DIR=$(docker info | grep 'Docker Root Dir' | awk -F': ' '{print $2}' > /dev/null 2>&1)
+    DOCKER_ROOT_DIR=$(docker info 2>/dev/null | grep 'Docker Root Dir' | awk -F': ' '{print $2}')
     DOCKER_CONFIG_FILE="${DOCKER_ROOT_DIR%/@docker}/@appconf/ContainerManager/dockerd.json"
 else
     DOCKER_CONFIG_FILE='/etc/docker/daemon.json'

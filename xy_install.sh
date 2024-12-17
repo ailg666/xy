@@ -1997,7 +1997,7 @@ fix_docker() {
     REGISTRY_URLS_JSON=$(printf '%s\n' "${REGISTRY_URLS[@]}" | jq -R . | jq -s .)
 
     if [ -f /etc/synoinfo.conf ]; then
-        DOCKER_ROOT_DIR=$(docker info | grep 'Docker Root Dir' | awk -F': ' '{print $2}' > /dev/null 2>&1)
+        DOCKER_ROOT_DIR=$(docker info 2>/dev/null | grep 'Docker Root Dir' | awk -F': ' '{print $2}')
         DOCKER_CONFIG_FILE="${DOCKER_ROOT_DIR%/@docker}/@appconf/ContainerManager/dockerd.json"
     else
         DOCKER_CONFIG_FILE='/etc/docker/daemon.json'
