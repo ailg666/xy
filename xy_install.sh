@@ -1982,6 +1982,19 @@ fix_docker() {
         fi
     done
 
+    docker_pid() {
+        if [ -f /var/run/docker.pid ]; then
+            kill -SIGHUP $(cat /var/run/docker.pid)
+        elif [ -f /var/run/dockerd.pid ]; then
+            kill -SIGHUP $(cat /var/run/dockerd.pid)
+        else
+            echo "Docker进程不存在，脚本中止执行。"
+            cp $BACKUP_FILE $DOCKER_CONFIG_FILE
+            echo "已恢复原配置文件。"
+            exit 1
+        fi 
+    }
+
     read -p $'\033[1;33m是否使用自定义镜像代理？（y/n）: \033[0m' use_custom_registry
     if [[ "$use_custom_registry" == [Yy] ]]; then
         read -p "请输入自定义镜像代理（示例：https://docker.ggbox.us.kg，多个请用空格分开。直接回车将重置为空）: " -a custom_registry_urls
@@ -2033,18 +2046,7 @@ fix_docker() {
         docker_pid
         exit 0
     fi
-    docker_pid() {
-        if [ -f /var/run/docker.pid ]; then
-            kill -SIGHUP $(cat /var/run/docker.pid)
-        elif [ -f /var/run/dockerd.pid ]; then
-            kill -SIGHUP $(cat /var/run/dockerd.pid)
-        else
-            echo "Docker进程不存在，脚本中止执行。"
-            cp $BACKUP_FILE $DOCKER_CONFIG_FILE
-            echo "已恢复原配置文件。"
-            exit 1
-        fi 
-    }
+    
     
     docker_pid
 
