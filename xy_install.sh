@@ -1964,7 +1964,9 @@ user_selecto() {
 }
 
 fix_docker() {
-    REGISTRY_URLS=('https://hub.rat.dev' 'https://nas.dockerimages.us.kg' 'https://dockerhub.ggbox.us.kg')
+    DEFAULT_REGISTRY_URLS=('https://hub.rat.dev' 'https://nas.dockerimages.us.kg' 'https://dockerhub.ggbox.us.kg')
+    REGISTRY_URLS=("${DEFAULT_REGISTRY_URLS[@]}")
+    
     DOCKER_CONFIG_FILE=''
     BACKUP_FILE=''
 
@@ -1980,10 +1982,22 @@ fix_docker() {
         fi
     done
 
+    read -p $'\033[1;33m是否使用自定义镜像代理？（y/n）: \033[0m' use_custom_registry
+    if [[ "$use_custom_registry" == [Yy] ]]; then
+        read -p "请输入自定义镜像代理（示例：https://docker.ggbox.us.kg，多个请用空格分开）: " -a custom_registry_urls
+        if [ ${#custom_registry_urls[@]} -eq 0 ]; then
+            echo "未输入任何自定义镜像代理，使用默认镜像代理。"
+        else
+            REGISTRY_URLS=("${custom_registry_urls[@]}")
+        fi
+    fi
+
+    echo -e "\033[1;33m正在执行修复，请稍候……\033[0m"
+
     REGISTRY_URLS_JSON=$(printf '%s\n' "${REGISTRY_URLS[@]}" | jq -R . | jq -s .)
 
     if [ -f /etc/synoinfo.conf ]; then
-        DOCKER_ROOT_DIR=$(docker info | grep 'Docker Root Dir' | awk -F': ' '{print $2}')
+        DOCKER_ROOT_DIR=$(docker info | grep 'Docker Root Dir' | awk -F': ' '{print $2}' > /dev/null 2>&1)
         DOCKER_CONFIG_FILE="${DOCKER_ROOT_DIR%/@docker}/@appconf/ContainerManager/dockerd.json"
     else
         DOCKER_CONFIG_FILE='/etc/docker/daemon.json'
@@ -2015,12 +2029,12 @@ fix_docker() {
     fi
 
     if docker pull hello-world; then
-        echo "Docker下载测试成功，配置更新完成！"
+        echo -e "\033[1;32mNice！Docker下载测试成功，配置更新完成！\033[0m"
     else
-        echo "Docker配置更新失败，恢复原配置文件..."
+        echo -e "\033[1;31m哎哟！Docker测试下载失败，恢复原配置文件...\033[0m"
         cp $BACKUP_FILE $DOCKER_CONFIG_FILE
         kill -SIGHUP $(cat /var/run/docker.pid)
-        echo "已恢复原配置文件。"
+        echo -e "\033[1;31m已恢复原配置文件！\033[0m"
     fi
 }
 
