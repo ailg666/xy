@@ -63,6 +63,10 @@ jq --argjson urls "$REGISTRY_URLS_JSON" '
         . + {"registry-mirrors": $urls}
     end
 ' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
+if [ "$REGISTRY_URLS_JSON" == '[]' ]; then
+    echo -e "\033[1;33m已清空镜像代理，不再检测docker连接性，直接退出！\033[0m"
+    exit 0
+fi
 docker_pid() {
     if [ -f /var/run/docker.pid ]; then
         kill -SIGHUP $(cat /var/run/docker.pid)
