@@ -2028,17 +2028,20 @@ fix_docker() {
             . + {"registry-mirrors": $urls}
         end
     ' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
-
-    if [ -f /var/run/docker.pid ]; then
-        kill -SIGHUP $(cat /var/run/docker.pid)
-    elif [ -f /var/run/dockerd.pid ]; then
-        kill -SIGHUP $(cat /var/run/dockerd.pid)
-    else
-        echo "Docker进程不存在，脚本中止执行。"
-        cp $BACKUP_FILE $DOCKER_CONFIG_FILE
-        echo "已恢复原配置文件。"
-        exit 1
-    fi
+    docker_pid() {
+       if [ -f /var/run/docker.pid ]; then
+            kill -SIGHUP $(cat /var/run/docker.pid)
+        elif [ -f /var/run/dockerd.pid ]; then
+            kill -SIGHUP $(cat /var/run/dockerd.pid)
+        else
+            echo "Docker进程不存在，脚本中止执行。"
+            cp $BACKUP_FILE $DOCKER_CONFIG_FILE
+            echo "已恢复原配置文件。"
+            exit 1
+        fi 
+    }
+    
+    docker_pid
 
     docker rmi hello-world:latest >/dev/null 2>&1
     if docker pull hello-world; then
@@ -2046,7 +2049,7 @@ fix_docker() {
     else
         echo -e "\033[1;31m哎哟！Docker测试下载失败，恢复原配置文件...\033[0m"
         cp $BACKUP_FILE $DOCKER_CONFIG_FILE
-        kill -SIGHUP $(cat /var/run/docker.pid)
+        docker_pid
         echo -e "\033[1;31m已恢复原配置文件！\033[0m"
     fi
 }
