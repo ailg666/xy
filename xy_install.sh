@@ -1987,13 +1987,19 @@ fix_docker() {
         read -p "请输入自定义镜像代理（示例：https://docker.ggbox.us.kg，多个请用空格分开。直接回车将重置为空）: " -a custom_registry_urls
         if [ ${#custom_registry_urls[@]} -eq 0 ]; then
             echo "未输入任何自定义镜像代理，镜像代理将重置为空。"
-        fi
+            REGISTRY_URLS=()
+        else
             REGISTRY_URLS=("${custom_registry_urls[@]}")
+        fi
     fi
 
     echo -e "\033[1;33m正在执行修复，请稍候……\033[0m"
 
-    REGISTRY_URLS_JSON=$(printf '%s\n' "${REGISTRY_URLS[@]}" | jq -R . | jq -s .)
+    if [ ${#REGISTRY_URLS[@]} -eq 0 ]; then
+        REGISTRY_URLS_JSON='[]'
+    else
+        REGISTRY_URLS_JSON=$(printf '%s\n' "${REGISTRY_URLS[@]}" | jq -R . | jq -s .)
+    fi
 
     if [ -f /etc/synoinfo.conf ]; then
         DOCKER_ROOT_DIR=$(docker info 2>/dev/null | grep 'Docker Root Dir' | awk -F': ' '{print $2}')
@@ -2010,11 +2016,18 @@ fix_docker() {
     BACKUP_FILE="${DOCKER_CONFIG_FILE}.bak"
     cp $DOCKER_CONFIG_FILE $BACKUP_FILE
 
-    if grep -q '"registry-mirrors"' $DOCKER_CONFIG_FILE; then
-        awk -v urls="$REGISTRY_URLS_JSON" '{gsub(/"registry-mirrors":\[[^]]*\]/, "\"registry-mirrors\":" urls)}1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
-    else
-        awk -v urls="$REGISTRY_URLS_JSON" 'BEGIN {FS=OFS="{"} NR==1 {$2="\n  \"registry-mirrors\": " urls ", " $2} 1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
-    fi
+    # if grep -q '"registry-mirrors"' $DOCKER_CONFIG_FILE; then
+    #     awk -v urls="$REGISTRY_URLS_JSON" '{gsub(/"registry-mirrors":\[[^]]*\]/, "\"registry-mirrors\":" urls)}1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
+    # else
+    #     awk -v urls="$REGISTRY_URLS_JSON" 'BEGIN {FS=OFS="{"} NR==1 {$2="\n  \"registry-mirrors\": " urls ", " $2} 1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
+    # fi
+    jq --argjson urls "$REGISTRY_URLS_JSON" '
+        if has("registry-mirrors") then
+            .["registry-mirrors"] = $urls
+        else
+            . + {"registry-mirrors": $urls}
+        end
+    ' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
 
     if [ -f /var/run/docker.pid ]; then
         kill -SIGHUP $(cat /var/run/docker.pid)
