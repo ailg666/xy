@@ -878,7 +878,7 @@ function user_select4() {
         echo -e "\n"
         echo -e "——————————————————————————————————————————————————————————————————————————————————"
 
-        read -erp "请输入您的选择（1-7，按b返回上级菜单或按q退出）；" f4_select
+        read -erp "请输入您的选择（1-7，按b返回上级菜单或按q退出）：" f4_select
         case "$f4_select" in
         1)
             emby_ailg="emby-ailg-115.mp4"
@@ -1281,7 +1281,7 @@ ailg_uninstall() {
         echo -e "\n"
         echo -e "——————————————————————————————————————————————————————————————————————————————————"
 
-        read -erp "请输入您的选择（1-7，按b返回上级菜单或按q退出）；" uninstall_select
+        read -erp "请输入您的选择（1-6，按b返回上级菜单或按q退出）：" uninstall_select
         case "$uninstall_select" in
         1)
             general_uninstall "ailg/alist:latest"
@@ -1916,7 +1916,7 @@ user_selecto() {
         echo -e "\033[1;32m7、修复docker镜像无法拉取（可手动配置镜像代理）\033[0m\033[0m"
         echo -e "\n"
         echo -e "——————————————————————————————————————————————————————————————————————————————————"
-        read -erp "请输入您的选择（1-7，按b返回上级菜单或按q退出）；" fo_select
+        read -erp "请输入您的选择（1-7，按b返回上级菜单或按q退出）：" fo_select
         case "$fo_select" in
         1)
             ailg_uninstall emby
@@ -2030,6 +2030,7 @@ fix_docker() {
     ' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
     if [ "$REGISTRY_URLS_JSON" == '[]' ]; then
         echo -e "\033[1;33m已清空镜像代理，不再检测docker连接性，直接退出！\033[0m"
+        docker_pid
         exit 0
     fi
     docker_pid() {
