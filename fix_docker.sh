@@ -19,12 +19,11 @@ done
 
 read -p $'\033[1;33m是否使用自定义镜像代理？（y/n）: \033[0m' use_custom_registry
 if [[ "$use_custom_registry" == [Yy] ]]; then
-    read -p "请输入自定义镜像代理（示例：https://docker.ggbox.us.kg，多个请用空格分开）: " -a custom_registry_urls
+    read -p "请输入自定义镜像代理（示例：https://docker.ggbox.us.kg，多个请用空格分开。直接回车将重置为空）: " -a custom_registry_urls
     if [ ${#custom_registry_urls[@]} -eq 0 ]; then
-        echo "未输入任何自定义镜像代理，使用默认镜像代理。"
-    else
-        REGISTRY_URLS=("${custom_registry_urls[@]}")
+        echo "未输入任何自定义镜像代理，镜像代理将重置为空。"
     fi
+    REGISTRY_URLS=("${custom_registry_urls[@]}")
 fi
 
 echo -e "\033[1;33m正在执行修复，请稍候……\033[0m"
