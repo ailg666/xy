@@ -2017,6 +2017,9 @@ fix_docker() {
     if [ -f /etc/synoinfo.conf ]; then
         DOCKER_ROOT_DIR=$(docker info 2>/dev/null | grep 'Docker Root Dir' | awk -F': ' '{print $2}')
         DOCKER_CONFIG_FILE="${DOCKER_ROOT_DIR%/@docker}/@appconf/ContainerManager/dockerd.json"
+    elif grep -q 'NAME="iStoreOS"' /etc/os-release; then
+        DOCKER_CONFIG_FILE=$(ps w | grep dockerd | awk '{for(i=1;i<=NF;i++) if ($i ~ /^--config-file(=|$)/) {if ($i ~ /^--config-file=/) print substr($i, index($i, "=") + 1); else print $(i+1)}}')
+        DOCKER_CONFIG_FILE=${DOCKER_CONFIG_FILE:-/etc/docker/daemon.json}
     else
         DOCKER_CONFIG_FILE='/etc/docker/daemon.json'
     fi
@@ -2046,7 +2049,6 @@ fix_docker() {
         docker_pid
         exit 0
     fi
-    
     
     docker_pid
 
