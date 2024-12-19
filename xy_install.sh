@@ -2095,7 +2095,6 @@ fix_docker() {
     fi
 
     DOCKER_CONFIG_FILE=${DOCKER_CONFIG_FILE:-/etc/docker/daemon.json}
-    echo "Docker 配置文件路径: $DOCKER_CONFIG_FILE"
 
     if [ ! -f "$DOCKER_CONFIG_FILE" ]; then
         echo "配置文件 $DOCKER_CONFIG_FILE 不存在，创建新文件。"
