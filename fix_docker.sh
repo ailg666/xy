@@ -1,6 +1,6 @@
 #!/bin/bash
-keys="awk jq grep cp mv kill 7z"
-values="gawk jq grep coreutils coreutils procps p7zip"
+keys="awk jq grep cp mv kill 7z dirname"
+values="gawk jq grep coreutils coreutils procps p7zip coreutils"
 
 get_value() {
     key=$1
@@ -131,7 +131,7 @@ echo "Docker 配置文件路径: $DOCKER_CONFIG_FILE"
 
 if [ ! -f "$DOCKER_CONFIG_FILE" ]; then
     echo "配置文件 $DOCKER_CONFIG_FILE 不存在，创建新文件。"
-    echo "{}" > $DOCKER_CONFIG_FILE
+    mkdir -p $(dirname $DOCKER_CONFIG_FILE) && echo "{}" > $DOCKER_CONFIG_FILE
     FILE_CREATED=true
 else
     FILE_CREATED=false
