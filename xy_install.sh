@@ -1963,6 +1963,41 @@ user_selecto() {
     done
 }
 
+declare -A PACKAGE_MAP=(
+    [docker]=docker
+    [awk]=gawk
+    [jq]=jq
+    [grep]=grep
+    [cp]=coreutils
+    [mv]=coreutils
+    [kill]=procps
+    [7z]=p7zip
+)
+
+install_command() {
+    local cmd=$1
+    local pkg=${PACKAGE_MAP[$cmd]:-$cmd}
+
+    if command_exists apt-get; then
+        apt-get update && apt-get install -y "$pkg"
+    elif command_exists yum; then
+        yum install -y "$pkg"
+    elif command_exists dnf; then
+        dnf install -y "$pkg"
+    elif command_exists zypper; then
+        zypper install -y "$pkg"
+    elif command_exists pacman; then
+        pacman -Sy --noconfirm "$pkg"
+    elif command_exists brew; then
+        brew install "$pkg"
+    elif command_exists apk; then
+        apk add --no-cache "$pkg"
+    else
+        echo "无法自动安装 $pkg，请手动安装。"
+        return 1
+    fi
+}
+
 fix_docker() {
     DEFAULT_REGISTRY_URLS=('https://hub.rat.dev' 'https://nas.dockerimages.us.kg' 'https://dockerhub.ggbox.us.kg')
     REGISTRY_URLS=("${DEFAULT_REGISTRY_URLS[@]}")
@@ -1977,8 +2012,11 @@ fix_docker() {
     REQUIRED_COMMANDS=('docker' 'awk' 'jq' 'grep' 'cp' 'mv' 'kill')
     for cmd in "${REQUIRED_COMMANDS[@]}"; do
         if ! command_exists "$cmd"; then
-            echo "缺少命令: $cmd，请安装后再运行脚本。"
-            exit 1
+            echo "缺少命令: $cmd，尝试安装..."
+            if ! install_command "$cmd"; then
+                echo "安装 $cmd 失败，请手动安装后再运行脚本。"
+                exit 1
+            fi
         fi
     done
 
@@ -2014,36 +2052,58 @@ fix_docker() {
         REGISTRY_URLS_JSON=$(printf '%s\n' "${REGISTRY_URLS[@]}" | jq -R . | jq -s .)
     fi
 
-    if [ -f /etc/synoinfo.conf ]; then
-        DOCKER_ROOT_DIR=$(docker info 2>/dev/null | grep 'Docker Root Dir' | awk -F': ' '{print $2}')
-        DOCKER_CONFIG_FILE="${DOCKER_ROOT_DIR%/@docker}/@appconf/ContainerManager/dockerd.json"
-    elif grep -q 'NAME="iStoreOS"' /etc/os-release; then
-        DOCKER_CONFIG_FILE=$(ps w | grep dockerd | awk '{for(i=1;i<=NF;i++) if ($i ~ /^--config-file(=|$)/) {if ($i ~ /^--config-file=/) print substr($i, index($i, "=") + 1); else print $(i+1)}}')
-        DOCKER_CONFIG_FILE=${DOCKER_CONFIG_FILE:-/etc/docker/daemon.json}
-    else
-        DOCKER_CONFIG_FILE='/etc/docker/daemon.json'
-    fi
-
-    if [ ! -f $DOCKER_CONFIG_FILE ]; then
-        echo "配置文件 $DOCKER_CONFIG_FILE 不存在，脚本中止执行。"
-        exit 1
-    fi
-
-    BACKUP_FILE="${DOCKER_CONFIG_FILE}.bak"
-    cp $DOCKER_CONFIG_FILE $BACKUP_FILE
-
-    # if grep -q '"registry-mirrors"' $DOCKER_CONFIG_FILE; then
-    #     awk -v urls="$REGISTRY_URLS_JSON" '{gsub(/"registry-mirrors":\[[^]]*\]/, "\"registry-mirrors\":" urls)}1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
+    # if [ -f /etc/synoinfo.conf ]; then
+    #     DOCKER_ROOT_DIR=$(docker info 2>/dev/null | grep 'Docker Root Dir' | awk -F': ' '{print $2}')
+    #     DOCKER_CONFIG_FILE="${DOCKER_ROOT_DIR%/@docker}/@appconf/ContainerManager/dockerd.json"
+    # elif grep -q 'NAME="iStoreOS"' /etc/os-release; then
+    #     DOCKER_CONFIG_FILE=$(ps w | grep dockerd | awk '{for(i=1;i<=NF;i++) if ($i ~ /^--config-file(=|$)/) {if ($i ~ /^--config-file=/) print substr($i, index($i, "=") + 1); else print $(i+1)}}')
+    #     DOCKER_CONFIG_FILE=${DOCKER_CONFIG_FILE:-/etc/docker/daemon.json}
     # else
-    #     awk -v urls="$REGISTRY_URLS_JSON" 'BEGIN {FS=OFS="{"} NR==1 {$2="\n  \"registry-mirrors\": " urls ", " $2} 1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
+    #     DOCKER_CONFIG_FILE='/etc/docker/daemon.json'
     # fi
+
+    if command -v busybox > /dev/null 2>&1; then
+        DOCKER_CONFIG_FILE=$(ps | grep dockerd | awk '{for(i=1;i<=NF;i++) if ($i ~ /^--config-file(=|$)/) {if ($i ~ /^--config-file=/) print substr($i, index($i, "=") + 1); else print $(i+1)}}')
+    else
+        DOCKER_CONFIG_FILE=$(ps -ef | grep dockerd | awk '{for(i=1;i<=NF;i++) if ($i ~ /^--config-file(=|$)/) {if ($i ~ /^--config-file=/) print substr($i, index($i, "=") + 1); else print $(i+1)}}')
+    fi
+
+    DOCKER_CONFIG_FILE=${DOCKER_CONFIG_FILE:-/etc/docker/daemon.json}
+    echo "Docker 配置文件路径: $DOCKER_CONFIG_FILE"
+
+    # if [ ! -f $DOCKER_CONFIG_FILE ]; then
+    #     echo "配置文件 $DOCKER_CONFIG_FILE 不存在，脚本中止执行。"
+    #     exit 1
+    # fi
+
+    if [ ! -f "$DOCKER_CONFIG_FILE" ]; then
+        echo "配置文件 $DOCKER_CONFIG_FILE 不存在，创建新文件。"
+        touch "$DOCKER_CONFIG_FILE"
+        echo "{}" > $DOCKER_CONFIG_FILE
+        FILE_CREATED=true
+    else
+        FILE_CREATED=false
+    fi
+
     jq --argjson urls "$REGISTRY_URLS_JSON" '
         if has("registry-mirrors") then
             .["registry-mirrors"] = $urls
         else
             . + {"registry-mirrors": $urls}
         end
-    ' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
+    ' "$DOCKER_CONFIG_FILE" > tmp.$$.json && mv tmp.$$.json "$DOCKER_CONFIG_FILE"
+
+    if [ "$FILE_CREATED" == false ]; then
+        BACKUP_FILE="${DOCKER_CONFIG_FILE}.bak"
+        cp -f $DOCKER_CONFIG_FILE $BACKUP_FILE
+    fi
+
+    # if grep -q '"registry-mirrors"' $DOCKER_CONFIG_FILE; then
+    #     awk -v urls="$REGISTRY_URLS_JSON" '{gsub(/"registry-mirrors":\[[^]]*\]/, "\"registry-mirrors\":" urls)}1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
+    # else
+    #     awk -v urls="$REGISTRY_URLS_JSON" 'BEGIN {FS=OFS="{"} NR==1 {$2="\n  \"registry-mirrors\": " urls ", " $2} 1' $DOCKER_CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $DOCKER_CONFIG_FILE
+    # fi
+
     if [ "$REGISTRY_URLS_JSON" == '[]' ]; then
         echo -e "\033[1;33m已清空镜像代理，不再检测docker连接性，直接退出！\033[0m"
         docker_pid
@@ -2057,7 +2117,11 @@ fix_docker() {
         echo -e "\033[1;32mNice！Docker下载测试成功，配置更新完成！\033[0m"
     else
         echo -e "\033[1;31m哎哟！Docker测试下载失败，恢复原配置文件...\033[0m"
-        cp $BACKUP_FILE $DOCKER_CONFIG_FILE
+        if [ "$FILE_CREATED" == false ]; then
+            cp -f $BACKUP_FILE $DOCKER_CONFIG_FILE
+        else
+            rm -f $DOCKER_CONFIG_FILE
+        fi
         docker_pid
         echo -e "\033[1;31m已恢复原配置文件！\033[0m"
     fi
