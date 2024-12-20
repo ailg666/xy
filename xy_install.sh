@@ -2418,6 +2418,9 @@ function user_gbox() {
     INFO "${Blue}如果你没有配置mytoken.txt和myopentoken.txt文件，请登陆\033[1;35mhttp://${localip}:4567\033[0m网页在'账号-详情'中配置！$NC"
     INFO "G-Box初始登陆${Green}用户名：admin\t密码：admin ${NC}"
     INFO "内置sun-panel导航初始登陆${Green}用户名：ailg666\t\t密码：12345678 ${NC}"
+    if ! grep -q 'alias gbox' /etc/profile; then
+        echo -e "alias gbox='bash -c \"\$(curl -sSLf https://gbox.ggbond.org/xy_install.sh)\"'" >> /etc/profile
+    fi
 }
 
 function main() {
