@@ -2421,6 +2421,7 @@ function user_gbox() {
     if ! grep -q 'alias gbox' /etc/profile; then
         echo -e "alias gbox='bash -c \"\$(curl -sSLf https://gbox.ggbond.org/xy_install.sh)\"'" >> /etc/profile
     fi
+    source /etc/profile
 }
 
 function main() {
