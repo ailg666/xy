@@ -739,7 +739,8 @@ check_loop_support() {
             done
 
             if [ "$contains" = false ]; then
-                ERROR "您系统的/dev/loop7设备已被占用，请手动卸载后重装运行脚本安装！" && exit 1
+                ERROR "您系统的/dev/loop7设备已被占用，可能是你没有用脚本卸载手动删除了emby的img镜像文件！"
+                ERROR "请手动卸载后重装运行脚本安装！不会就删掉爬虫容后重启宿主机设备，再运行脚本安装！" && exit 1
             fi
         else
             for i in {1..3}; do
@@ -1030,6 +1031,7 @@ function user_select4() {
         echo -e "${Yellow}排障步骤：\n1、检查5678打开alist能否正常播放（排除token失效和风控！）"
         echo -e "${Yellow}2、检查alist配置目录的docker_address.txt是否正确指向你的alist访问地址，\n   应为宿主机+5678端口，示例：http://192.168.2.3:5678"
         echo -e "${Yellow}3、检查阿里云盘空间，确保剩余空间大于${space_need}G${NC}"
+        echo -e "${Yellow}4、如果打开了阿里快传115，确保有115会员且添加了正确的cookie，不是115会员不要打开阿里快传115！${NC}"
         exit 1
     fi
     INFO "远程文件大小获取成功！"
