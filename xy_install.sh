@@ -107,13 +107,13 @@ function get_emby_image() {
     cpu_arch=$(uname -m)
     case $cpu_arch in
     "x86_64" | *"amd64"*)
-        emby_image="emby/embyserver:4.9.0.31"
+        emby_image="emby/embyserver:4.8.0.56"
         ;;
     "aarch64" | *"arm64"* | *"armv8"* | *"arm/v8"*)
-        emby_image="emby/embyserver_arm64v8:4.9.0.31"
+        emby_image="emby/embyserver_arm64v8:4.8.0.56"
         ;;
     "armv7l")
-        emby_image="emby/embyserver_arm32v7:4.9.0.31"
+        emby_image="emby/embyserver_arm32v7:4.8.0.56"
         ;;
     *)
         ERROR "不支持你的CPU架构：$cpu_arch"
@@ -160,10 +160,10 @@ function get_emby_happy_image() {
     cpu_arch=$(uname -m)
     case $cpu_arch in
     "x86_64" | *"amd64"*)
-        emby_image="amilys/embyserver:4.9.0.31"
+        emby_image="amilys/embyserver:4.8.0.56"
         ;;
     "aarch64" | *"arm64"* | *"armv8"* | *"arm/v8"*)
-        emby_image="amilys/embyserver_arm64v8:4.8.9.0"
+        emby_image="amilys/embyserver_arm64v8:4.8.6.0"
         ;;
     *)
         ERROR "不支持你的CPU架构：$cpu_arch"
@@ -828,73 +828,25 @@ check_loop_support() {
 
 function user_select4() {
     down_img() {
-
-        # 先判断是否需要下载，即文件不存在或者存在 aria2 临时文件
         if [[ ! -f $image_dir/$emby_ailg ]] || [[ -f $image_dir/$emby_ailg.aria2 ]]; then
-            # 更新 ailg/ggbond:latest 镜像
             update_ailg ailg/ggbond:latest
-            # 执行清理操作
             docker exec $docker_name ali_clear -1 > /dev/null 2>&1
-
-            if [[ $ok_115 =~ ^[Yy]$ ]]; then
-                # 尝试下载测试文件
-                docker run --rm --net=host -v $image_dir:/image ailg/ggbond:latest \
-                    aria2c -o /image/test.mp4 --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/115/ailg_img/gbox_intro.mp4" > /dev/null 2>&1
-
-                # 判断测试文件是否下载成功
-                test_file_size=$(du -b $image_dir/test.mp4 2>/dev/null | cut -f1)
-                if [[ ! -f $image_dir/test.mp4.aria2 ]] && [[ $test_file_size -eq 17675105 ]]; then
-                    # 测试文件下载成功，删除测试文件
-                    rm -f $image_dir/test.mp4
-                    use_115_path=true
-                else
-                    use_115_path=false
-                fi
-            else
-                use_115_path=false
-            fi
-
-            if $use_115_path; then
-                # 使用 115 路径下载目标文件
-                docker run --rm --net=host -v $image_dir:/image ailg/ggbond:latest \
-                    aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/115/ailg_img/${down_path}/$emby_ailg"
-            else
-                # 使用原路径下载目标文件
-                docker run --rm --net=host -v $image_dir:/image ailg/ggbond:latest \
-                    aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/${down_path}/$emby_ailg"
-            fi
+            docker run --rm --net=host -v $image_dir:/image ailg/ggbond:latest \
+                aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/${down_path}/$emby_ailg"
         fi
-
-        # 获取本地文件大小
         local_size=$(du -b $image_dir/$emby_ailg | cut -f1)
-
-        # 最多尝试 3 次下载
         for i in {1..3}; do
             if [[ -f $image_dir/$emby_ailg.aria2 ]] || [[ $remote_size -gt "$local_size" ]]; then
                 docker exec $docker_name ali_clear -1 > /dev/null 2>&1
-                if $use_115_path; then
-                    # 使用 115 路径下载目标文件
-                    docker run --rm --net=host -v $image_dir:/image ailg/ggbond:latest \
-                        aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/115/ailg_img/${down_path}/$emby_ailg"
-                else
-                    # 使用原路径下载目标文件
-                    docker run --rm --net=host -v $image_dir:/image ailg/ggbond:latest \
-                        aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/${down_path}/$emby_ailg"
-                fi
+                docker run --rm --net=host -v $image_dir:/image ailg/ggbond:latest \
+                    aria2c -o /image/$emby_ailg --auto-file-renaming=false --allow-overwrite=true -c -x6 "$docker_addr/d/ailg_jf/${down_path}/$emby_ailg"
                 local_size=$(du -b $image_dir/$emby_ailg | cut -f1)
             else
                 break
             fi
         done
-
-        # 检查文件是否下载完整，若不完整则输出错误信息并退出
-        if [[ -f $image_dir/$emby_ailg.aria2 ]] || [[ $remote_size != "$local_size" ]]; then
-            ERROR "文件下载失败，请检查网络后重新运行脚本！"
-            WARN "未下完的文件存放在${image_dir}目录，以便您续传下载，如不再需要请手动清除！"
-            exit 1
-        fi
+        [[ -f $image_dir/$emby_ailg.aria2 ]] || [[ $remote_size != "$local_size" ]] && ERROR "文件下载失败，请检查网络后重新运行脚本！" && WARN "未下完的文件存放在${image_dir}目录，以便您续传下载，如不再需要请手动清除！" && exit 1
     }
-
     check_qnap
     check_loop_support
     while :; do
@@ -913,7 +865,7 @@ function user_select4() {
         echo -e "\n"
         echo -e "\033[1;32m1、小雅EMBY老G速装 - 115完整版\033[0m"
         echo -e "\n"
-        echo -e "\033[1;35m2、小雅EMBY老G速装 - 115-Lite版（暂勿安装，待完善）\033[0m"
+        echo -e "\033[1;35m2、小雅EMBY老G速装 - 115-Lite版\033[0m"
         echo -e "\n"
         echo -e "\033[1;32m3、小雅JELLYFIN老G速装 - 10.8.13 - 完整版\033[0m"
         echo -e "\n"
@@ -923,11 +875,11 @@ function user_select4() {
         echo -e "\n"
         echo -e "\033[1;35m6、小雅JELLYFIN老G速装 - 10.9.6 - Lite版\033[0m"
         echo -e "\n"
-        # echo -e "\033[1;35m7、小雅EMBY老G速装 - Lite版\033[0m"
-        # echo -e "\n"
+        echo -e "\033[1;35m7、小雅EMBY老G速装 - Lite版\033[0m"
+        echo -e "\n"
         echo -e "——————————————————————————————————————————————————————————————————————————————————"
 
-        read -erp "请输入您的选择（1-6，按b返回上级菜单或按q退出）：" f4_select
+        read -erp "请输入您的选择（1-7，按b返回上级菜单或按q退出）：" f4_select
         case "$f4_select" in
         1)
             emby_ailg="emby-ailg-115.mp4"
@@ -965,12 +917,12 @@ function user_select4() {
             space_need=130
             break
             ;;
-        # 7)
-        #     emby_ailg="emby-ailg-lite.mp4"
-        #     emby_img="emby-ailg-lite.img"
-        #     space_need=125
-        #     break
-        #     ;;
+        7)
+            emby_ailg="emby-ailg-lite.mp4"
+            emby_img="emby-ailg-lite.img"
+            space_need=125
+            break
+            ;;
         [Bb])
             clear
             main
@@ -1003,8 +955,6 @@ function user_select4() {
     echo -e "\033[1;35m请输入镜像下载后需要扩容的空间（单位：GB，默认60G可直接回车，请确保大于${space_need}G剩余空间！）:\033[0m"
     read -r expand_size
     expand_size=${expand_size:-60}
-    # 先询问用户 115 网盘空间是否足够
-    read -p "使用115下载镜像请确保cookie正常且网盘剩余空间不低于100G，（按Y/y 确认，按任意键走阿里云盘下载！）: " ok_115
     check_path $image_dir
     check_path $image_dir
     if [ -f "${image_dir}/${emby_ailg}" ] || [ -f "${image_dir}/${emby_img}" ]; then
@@ -1073,7 +1023,7 @@ function user_select4() {
 
     start_time=$(date +%s)
     for i in {1..5}; do
-        remote_size=$(curl -sL -D - -o /dev/null --max-time 10 "$docker_addr/d/ailg_jf/115/ailg_img/${down_path}/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tail -n 1 | tr -d '\r')
+        remote_size=$(curl -sL -D - -o /dev/null --max-time 10 "$docker_addr/d/ailg_jf/${down_path}/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tail -n 1 | tr -d '\r')
         [[ -n $remote_size ]] && echo -e "remotesize is：${remote_size}" && break
     done
     if [[ $remote_size -lt 100000 ]]; then
