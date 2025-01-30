@@ -913,7 +913,7 @@ function user_select4() {
         echo -e "\n"
         echo -e "\033[1;32m1、小雅EMBY老G速装 - 115完整版\033[0m"
         echo -e "\n"
-        echo -e "\033[1;35m2、小雅EMBY老G速装 - 115-Lite版\033[0m"
+        echo -e "\033[1;35m2、小雅EMBY老G速装 - 115-Lite版（暂勿安装，待完善）\033[0m"
         echo -e "\n"
         echo -e "\033[1;32m3、小雅JELLYFIN老G速装 - 10.8.13 - 完整版\033[0m"
         echo -e "\n"
