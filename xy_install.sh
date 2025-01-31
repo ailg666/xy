@@ -932,13 +932,13 @@ function user_select4() {
         1)
             emby_ailg="emby-ailg-115.mp4"
             emby_img="emby-ailg-115.img"
-            space_need=160
+            space_need=130
             break
             ;;
         2)
             emby_ailg="emby-ailg-lite-115.mp4"
             emby_img="emby-ailg-lite-115.img"
-            space_need=140
+            space_need=120
             break
             ;;
         3)
