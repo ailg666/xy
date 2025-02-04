@@ -104,22 +104,27 @@ function check_space() {
 }
 
 function get_emby_image() {
+    # 设置默认版本号
+    local version=${1:-"4.9.0.31"}
+    
     cpu_arch=$(uname -m)
     case $cpu_arch in
     "x86_64" | *"amd64"*)
-        emby_image="emby/embyserver:4.9.0.31"
+        emby_image="emby/embyserver:${version}"
         ;;
     "aarch64" | *"arm64"* | *"armv8"* | *"arm/v8"*)
-        emby_image="emby/embyserver_arm64v8:4.9.0.31"
+        emby_image="emby/embyserver_arm64v8:${version}"
         ;;
     "armv7l")
-        emby_image="emby/embyserver_arm32v7:4.9.0.31"
+        emby_image="emby/embyserver_arm32v7:${version}"
         ;;
     *)
         ERROR "不支持你的CPU架构：$cpu_arch"
         exit 1
         ;;
     esac
+
+    # 检查镜像是否存在
     if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ${emby_image}; then
         for i in {1..3}; do
             if docker_pull $emby_image; then
@@ -128,6 +133,8 @@ function get_emby_image() {
             fi
         done
     fi
+
+    # 验证镜像是否成功拉取
     docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ${emby_image} || (ERROR "${emby_image}镜像拉取失败，请手动安装emby，无需重新运行本脚本，小雅媒体库在${media_dir}！" && exit 1)
 }
 
@@ -923,8 +930,8 @@ function user_select4() {
         echo -e "\n"
         echo -e "\033[1;35m6、小雅JELLYFIN老G速装 - 10.9.6 - Lite版\033[0m"
         echo -e "\n"
-        # echo -e "\033[1;35m7、小雅EMBY老G速装 - Lite版\033[0m"
-        # echo -e "\n"
+        echo -e "\033[1;35m7、小雅EMBY老G速装 - 115-Lite版（4.8.0.56）\033[0m"
+        echo -e "\n"
         echo -e "——————————————————————————————————————————————————————————————————————————————————"
 
         read -erp "请输入您的选择（1-6，按b返回上级菜单或按q退出）：" f4_select
@@ -965,12 +972,12 @@ function user_select4() {
             space_need=130
             break
             ;;
-        # 7)
-        #     emby_ailg="emby-ailg-lite.mp4"
-        #     emby_img="emby-ailg-lite.img"
-        #     space_need=125
-        #     break
-        #     ;;
+        7)
+            emby_ailg="emby-ailg-lite-115.mp4"
+            emby_img="emby-ailg-lite-115.img"
+            space_need=125
+            break
+            ;;
         [Bb])
             clear
             main
@@ -1013,7 +1020,7 @@ function user_select4() {
         check_space $image_dir $space_need
     fi
 
-    if [[ "${f4_select}" == [127] ]]; then
+    if [[ "${f4_select}" == [127 ]]; then
         search_img="emby/embyserver|amilys/embyserver"
         del_name="emby"
         loop_order="/dev/loop7"
@@ -1031,6 +1038,15 @@ function user_select4() {
         init="run_jf"
         emd_name="xiaoya-emd-jf"
         entrypoint_mount="entrypoint_emd_jf"
+    elif [[ "${f4_select}" == [7] ]]; then
+        search_img="emby/embyserver|amilys/embyserver"
+        del_name="emby"
+        loop_order="/dev/loop7"
+        down_path="emby/4.8.0.56"
+        get_emby_image 4.8.0.56
+        init="run"
+        emd_name="xiaoya-emd"
+        entrypoint_mount="entrypoint_emd"
     fi
     get_emby_status
 
@@ -1073,7 +1089,11 @@ function user_select4() {
 
     start_time=$(date +%s)
     for i in {1..5}; do
-        remote_size=$(curl -sL -D - -o /dev/null --max-time 10 "$docker_addr/d/ailg_jf/${down_path}/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tail -n 1 | tr -d '\r')
+        if [[ $ok_115 =~ ^[Yy]$ ]]; then
+            remote_size=$(curl -sL -D - -o /dev/null --max-time 10 "$docker_addr/d/ailg_jf/115/ailg_img/${down_path}/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tail -n 1 | tr -d '\r')
+        else
+            remote_size=$(curl -sL -D - -o /dev/null --max-time 10 "$docker_addr/d/ailg_jf/${down_path}/$emby_ailg" | grep "Content-Length" | cut -d' ' -f2 | tail -n 1 | tr -d '\r')
+        fi
         [[ -n $remote_size ]] && echo -e "remotesize is：${remote_size}" && break
     done
     if [[ $remote_size -lt 100000 ]]; then
