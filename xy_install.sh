@@ -1020,7 +1020,7 @@ function user_select4() {
         check_space $image_dir $space_need
     fi
 
-    if [[ "${f4_select}" == [12]]; then
+    if [[ "${f4_select}" == [12] ]]; then
         search_img="emby/embyserver|amilys/embyserver"
         del_name="emby"
         loop_order="/dev/loop7"
