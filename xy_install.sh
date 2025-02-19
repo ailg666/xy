@@ -839,7 +839,7 @@ function user_select4() {
         # 先判断是否需要下载，即文件不存在或者存在 aria2 临时文件
         if [[ ! -f $image_dir/$emby_ailg ]] || [[ -f $image_dir/$emby_ailg.aria2 ]]; then
             # 更新 ailg/ggbond:latest 镜像
-            update_ailg ailg/ggbond:latest
+            # update_ailg ailg/ggbond:latest
             # 执行清理操作
             docker exec $docker_name ali_clear -1 > /dev/null 2>&1
 
@@ -1113,7 +1113,7 @@ function user_select4() {
         [ "$local_size" -lt "$remote_size" ] && down_img
     fi
 
-    update_ailg ailg/ggbond:latest
+    # update_ailg ailg/ggbond:latest
 
     echo "$local_size $remote_size $image_dir/$emby_ailg $media_dir"
     mount | grep $media_dir && umount $media_dir
@@ -1601,7 +1601,7 @@ mount_img() {
     check_qnap
     # check_loop_support
     get_emby_status > /dev/null
-    update_ailg ailg/ggbond:latest
+    # update_ailg ailg/ggbond:latest
     if [ ! -f /usr/bin/mount_ailg ]; then
         docker cp xiaoya_jf:/var/lib/mount_ailg "/usr/bin/mount_ailg"
         chmod 777 /usr/bin/mount_ailg
@@ -1716,7 +1716,7 @@ expand_img() {
     check_qnap
     # check_loop_support
     get_emby_status > /dev/null
-    update_ailg ailg/ggbond:latest
+    # update_ailg ailg/ggbond:latest
     if [ ! -f /usr/bin/mount_ailg ]; then
         docker cp xiaoya_jf:/var/lib/mount_ailg "/usr/bin/mount_ailg"
         chmod 777 /usr/bin/mount_ailg
