@@ -1102,6 +1102,7 @@ function user_select4() {
         echo -e "${Yellow}2、检查alist配置目录的docker_address.txt是否正确指向你的alist访问地址，\n   应为宿主机+5678端口，示例：http://192.168.2.3:5678"
         echo -e "${Yellow}3、检查阿里云盘空间，确保剩余空间大于${space_need}G${NC}"
         echo -e "${Yellow}4、如果打开了阿里快传115，确保有115会员且添加了正确的cookie，不是115会员不要打开阿里快传115！${NC}"
+        echo -e "${Yellow}5、💡使用115通道下载失败，检查5678页ailg_jf/115目录的视频是否能放，如cookie正常但此目录提示重新登陆，重启一次G-Box容器即可！💡${NC}"
         exit 1
     fi
     INFO "远程文件大小获取成功！"
