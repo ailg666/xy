@@ -1121,7 +1121,7 @@ function user_select4() {
         [ "$local_size" -lt "$remote_size" ] && down_img
     fi
 
-    # update_ailg ailg/ggbond:latest
+    update_ailg ailg/ggbond:latest
 
     echo "$local_size $remote_size $image_dir/$emby_ailg $media_dir"
     mount | grep $media_dir && umount $media_dir
