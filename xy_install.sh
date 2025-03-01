@@ -1756,7 +1756,7 @@ expand_img() {
 
             while :; do
                 read -erp "输入序号：" img_select
-                WARN "注：扩容后的镜像体积不能超过物理磁盘空间的70%！当前安装完整小雅emby扩容后镜像不低于160G！建议扩容至200G及以上！"
+                WARN "注：扩容后镜像文件所在磁盘至少保留3G空间，比如所在磁盘剩\033[1;33m100G空间\033[0m，扩容数值不能超过\033[1;33m97\033[0m！"
                 read -erp "输入您要扩容的大小（单位：GB）：" expand_size
                 if [ "${img_select}" -gt 0 ] && [ "${img_select}" -le ${#img_order[@]} ]; then
                     emby_name=${img_order[$((img_select - 1))]}
