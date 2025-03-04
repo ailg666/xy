@@ -1598,7 +1598,18 @@ happy_emby() {
                         --user 0:0 \
                         --net=host \
                         --privileged --add-host="xiaoya.host:$xiaoya_host" --restart always ${emby_image}
+                    
+                    sleep 5
+                    if docker ps --format '{{.Names}}' | grep -q "^${happy_name}$"; then
                         fuck_cors "${happy_name}"
+                        INFO "${Green}恭喜！开心版emby安装成功！${NC}"
+                        INFO "请使用浏览器访问 ${Blue}http://ip:2345${NC} 使用小雅emby"
+                        INFO "如需启用硬解，请使用 ${Blue}http://ip:6908${NC} 访问并自行配置"
+                        INFO "默认用户名：${Blue}xiaoya${NC}，密码：${Blue}1234${NC}"
+                    else
+                        ERROR "开心版emby安装失败！请检查docker日志:"
+                        echo -e "${Yellow}docker logs ${happy_name}${NC}"
+                    fi
                     break
                 else
                     ERROR "您输入的序号无效，请输入一个在 1 到 ${#img_order[@]} 之间的数字。"
