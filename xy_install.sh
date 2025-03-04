@@ -164,13 +164,14 @@ function get_jellyfin_image() {
 }
 
 function get_emby_happy_image() {
+    local version=$1
     cpu_arch=$(uname -m)
     case $cpu_arch in
     "x86_64" | *"amd64"*)
-        emby_image="amilys/embyserver:4.9.0.31"
+        emby_image="amilys/embyserver:${version}"
         ;;
     "aarch64" | *"arm64"* | *"armv8"* | *"arm/v8"*)
-        emby_image="amilys/embyserver_arm64v8:4.8.9.0"
+        emby_image="amilys/embyserver_arm64v8:${version}"
         ;;
     *)
         ERROR "不支持你的CPU架构：$cpu_arch"
@@ -183,7 +184,7 @@ function get_emby_happy_image() {
             break
         fi
     done
-    docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ${emby_image} || (ERROR "${emby_image}镜像拉取失败，请手动安装emby，无需重新运行本脚本，小雅媒体库在${img_mount}！" && exit 1)
+    docker images --format '{{.Repository}}:{{.Tag}}' | grep -q ${emby_image} || (ERROR "${emby_image}镜像拉取失败，请手动安装emby，无需重新运行本脚本！" && exit 1)
 }
 
 function get_config_path() {
@@ -1521,7 +1522,6 @@ img_uninstall() {
 happy_emby() {
     # declare -ga img_order
     img_order=()
-    get_emby_happy_image
     check_qnap
     # check_loop_support
     get_emby_status > /dev/null
@@ -1560,6 +1560,29 @@ happy_emby() {
                             break
                         fi
                     done
+
+                    # 获取当前emby容器使用的镜像版本
+                    current_image=$(docker inspect --format '{{.Config.Image}}' "${happy_name}")
+                    current_version=$(echo "$current_image" | awk -F':' '{print $NF}')
+                    
+                    # 如果无法获取版本号，让用户手动输入
+                    if [[ -z "$current_version" ]]; then
+                        echo -e "\033[1;33m无法自动获取emby版本号，请手动输入版本号。\033[0m"
+                        echo -e "常见版本号示例："
+                        echo -e "4.8.9.0  - 老G速装版默认版本"
+                        echo -e "4.9.0.31 - 老G速装版新版本"
+                        while true; do
+                            read -erp "请输入版本号(格式如: 4.8.9.0): " current_version
+                            if [[ $current_version =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                                break
+                            else
+                                ERROR "版本号格式不正确，请重新输入！"
+                            fi
+                        done
+                    fi
+                    
+                    # 获取开心版镜像
+                    get_emby_happy_image "$current_version"
 
                     docker rm -f "${happy_name}"
                     INFO "旧的${happy_name}容器已删除！"
@@ -1756,7 +1779,7 @@ expand_img() {
 
             while :; do
                 read -erp "输入序号：" img_select
-                WARN "注：扩容后镜像文件所在磁盘至少保留3G空间，比如所在磁盘剩\033[1;33m100G空间\033[0m，扩容数值不能超过\033[1;33m97\033[0m！"
+                WARN "注：扩容后镜像文件所在磁盘至少保留3G空间，比如所在磁盘\033[1;33m剩余100G\033[0m空间，扩容数值不能超过\033[1;33m97\033[0m！"
                 read -erp "输入您要扩容的大小（单位：GB）：" expand_size
                 if [ "${img_select}" -gt 0 ] && [ "${img_select}" -le ${#img_order[@]} ]; then
                     emby_name=${img_order[$((img_select - 1))]}
