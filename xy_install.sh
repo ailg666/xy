@@ -1605,10 +1605,8 @@ happy_emby() {
                         INFO "${Green}恭喜！开心版emby安装成功！${NC}"
                         INFO "请使用浏览器访问 ${Blue}http://ip:2345${NC} 使用小雅emby"
                         INFO "如需启用硬解，请使用 ${Blue}http://ip:6908${NC} 访问并自行配置"
-                        INFO "默认用户名：${Blue}xiaoya${NC}，密码：${Blue}1234${NC}"
                     else
                         ERROR "开心版emby安装失败！请检查docker日志:"
-                        echo -e "${Yellow}docker logs ${happy_name}${NC}"
                     fi
                     break
                 else
