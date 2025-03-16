@@ -2787,6 +2787,7 @@ choose_mirrors() {
     mirrors=(
         docker.io
         hub.rat.dev
+        nas.dockerimages.us.kg
         dockerhub.ggbox.us.kg
         docker.aidenxin.xyz
         dockerhub.anzu.vip
