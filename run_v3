@@ -1,0 +1,376 @@
+#!/usr/bin/with-contenv sh
+# shellcheck shell=sh
+# shellcheck disable=SC2114
+
+INFO() {
+    echo "[INFO] $*"
+}
+
+WARN() {
+    echo "[WARN] $*"
+}
+
+ERROR() {
+    echo "[ERROR] $*"
+}
+
+sync_loop_files() {
+    if [ -d "/ailg_config" ]; then
+        if ls /ailg_config/emby-config*.img >/dev/null 2>&1 || ls /ailg_config/jellyfin-config*.img >/dev/null 2>&1; then
+            INFO "检测到/ailg_config目录中有config镜像文件，开始同步.loop文件" >&2
+            
+            if [ -f "/ailg/.loop" ]; then
+                cp -f "/ailg/.loop" "/ailg_config/.loop"
+                INFO "已将/ailg/.loop同步到/ailg_config/.loop" >&2
+            else
+                INFO "/ailg/.loop不存在，无需同步" >&2
+            fi
+        else
+            INFO "/ailg_config目录存在但无config镜像文件，跳过同步" >&2
+        fi
+    else
+        INFO "未检测到/ailg_config目录，使用标准.loop文件管理" >&2
+    fi
+}
+
+sync_loop_files
+
+update_loop_files() {
+    local img_type="$1"
+    local loop_device="$2"
+    local img_path="$3"
+    
+    local temp_file=$(mktemp)
+    local updated=false
+    
+    if [ -f "/ailg/.loop" ]; then
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^$img_type\  ]]; then
+                local original_path=$(echo "$line" | awk '{print $3}')
+                echo "$img_type $loop_device $original_path" >> "$temp_file"
+                updated=true
+            else
+                echo "$line" >> "$temp_file"
+            fi
+        done < "/ailg/.loop"
+    fi
+    
+    if [ "$updated" = false ]; then
+        echo "$img_type $loop_device $img_path" >> "$temp_file"
+    fi
+    
+    mv "$temp_file" "/ailg/.loop"
+    
+    if [ -d "/ailg_config" ]; then
+        cp -f "/ailg/.loop" "/ailg_config/.loop"
+        INFO "已同步.loop文件到/ailg_config/.loop" >&2
+    fi
+    
+    INFO "已更新.loop文件: $img_type -> $loop_device" >&2
+}
+
+get_loop_device() {
+    local img_file="$1"
+    local offset="${2:-10000000}"
+    
+    local mount_dir
+    local state_file_dir
+    local img_type
+    if [ "$img_file" = "media.img" ]; then
+        mount_dir="/volume_img"
+        state_file_dir="/ailg"
+        img_type="media"
+    elif [ "$img_file" = "config.img" ]; then
+        mount_dir="/volume_cfg"
+        img_type="config"
+        if [ -f "/ailg_config/.loop" ]; then
+            state_file_dir="/ailg_config"
+        else
+            state_file_dir="/ailg"
+        fi
+    else
+        return 1
+    fi
+    
+    local loop_device=""
+    if [ -f "$state_file_dir/.loop" ]; then
+        if [ "$img_file" = "media.img" ]; then
+            loop_device=$(grep "^media " "$state_file_dir/.loop" | awk '{print $2}')
+        elif [ "$img_file" = "config.img" ]; then
+            loop_device=$(grep "^config " "$state_file_dir/.loop" | awk '{print $2}')
+        fi
+        
+        
+        if [ -n "$loop_device" ]; then
+            INFO "从/ailg/.loop获取到loop设备: $loop_device" >&2
+        else
+            INFO "未在/ailg/.loop中找到对应的loop设备" >&2
+        fi
+        
+        if [ -n "$loop_device" ]; then
+            local existing_binding=""
+            if losetup -a | grep -q "("; then
+                existing_binding=$(losetup -a | grep "($img_file)")
+            else
+                existing_binding=$(losetup -a | grep "/$img_file")
+            fi
+            local loop_device_binding=$(losetup -a | grep "^$loop_device:")
+            
+            if [ -n "$existing_binding" ]; then
+                local existing_loop=$(echo "$existing_binding" | cut -d: -f1)
+                INFO "发现已有loop绑定: $existing_loop -> /$img_file" >&2
+                
+                if [ "$existing_loop" = "$loop_device" ]; then
+                    INFO "loop设备号一致，视为已经绑定" >&2
+                    if mount "$loop_device" "$mount_dir" 2>/dev/null; then
+                    local recorded_path=$(grep "^$img_type " "$state_file_dir/.loop" | awk '{print $3}')
+                    local current_path=$(cat /proc/self/mountinfo | grep -o "\/.*\.img /$img_file" | cut -d' ' -f1)
+                    
+                    if [[ "$current_path" =~ ^/@ ]]; then
+                        current_path=$(echo "$current_path" | sed 's|^/[^/]*||')
+                    fi
+                    
+                    local recorded_filename=$(basename "$recorded_path")
+                    local current_filename=$(basename "$current_path")
+                    
+                    if [ "$recorded_filename" = "$current_filename" ] || 
+                       [[ "$recorded_path" == *"$current_filename" ]] || 
+                       [[ "$current_path" == *"$recorded_filename" ]]; then
+                            INFO "挂载路径一致，操作成功" >&2
+                            return 0
+                        else
+                            INFO "挂载路径不一致，需要重新绑定" >&2
+                            umount -l "$loop_device" 2>/dev/null
+                            losetup -d "$loop_device" 2>/dev/null
+                        fi
+                    else
+                        INFO "挂载失败，需要重新绑定" >&2
+                    fi
+                else
+                    INFO "loop设备号不一致，更新.loop文件并重新绑定" >&2
+                    umount -l "$existing_loop" 2>/dev/null
+                    losetup -d "$existing_loop" 2>/dev/null
+                fi
+            elif [ -n "$loop_device_binding" ]; then
+                INFO "loop设备 $loop_device 已被绑定到其他文件，先解除绑定" >&2
+                umount -l "$loop_device" 2>/dev/null
+                losetup -d "$loop_device" 2>/dev/null
+                if ! losetup -a | grep -q "^$loop_device:"; then
+                    INFO "成功解除loop设备绑定: $loop_device" >&2
+                else
+                    WARN "losetup -d失败，将获取新的loop设备" >&2
+                    loop_device=""
+                fi
+            else
+                INFO "容器中无/media.img相关的loop绑定，使用.loop中的设备号" >&2
+            fi
+            
+            if [ -n "$loop_device" ]; then
+                if losetup -o "$offset" "$loop_device" "/$img_file"; then
+                    if mount "$loop_device" "$mount_dir"; then
+                        local current_path=$(cat /proc/self/mountinfo | grep -o "\/.*\.img /$img_file" | cut -d' ' -f1)
+                        
+                        if [[ "$current_path" =~ ^/@ ]]; then
+                            current_path=$(echo "$current_path" | sed 's|^/[^/]*||')
+                        fi
+                        
+                        update_loop_files "$img_type" "$loop_device" "$current_path"
+                        INFO "成功绑定并挂载: $loop_device -> /$img_file" >&2
+                        return 0
+                    else
+                        losetup -d "$loop_device"
+                        return 1
+                    fi
+                else
+                    WARN "重新绑定loop设备失败，将获取新的loop设备" >&2
+                    loop_device=""
+                fi
+            fi
+        fi
+    fi
+    
+    if [ -z "$loop_device" ]; then
+        INFO "获取新的loop设备" >&2
+    else
+        INFO "未找到/ailg/.loop文件，获取新的loop设备" >&2
+    fi
+    new_loop=$(losetup -f)
+    
+    if [ -n "$new_loop" ] && [ ! -e "$new_loop" ]; then
+        loop_num=$(echo "$new_loop" | grep -o '[0-9]\+$')
+        if ! mknod "$new_loop" b 7 "$loop_num" 2>/dev/null; then
+            return 1
+        fi
+    elif [ -z "$new_loop" ]; then
+        return 1
+    fi
+    
+    if losetup -o "$offset" "$new_loop" "/$img_file"; then
+        if mount "$new_loop" "$mount_dir"; then
+            mkdir -p "/ailg"
+            current_path=$(cat /proc/self/mountinfo | grep -o "\/.*\.img /$img_file" | cut -d' ' -f1)
+            
+            if [[ "$current_path" =~ ^/@ ]]; then
+                current_path=$(echo "$current_path" | sed 's|^/[^/]*||')
+            fi
+            
+            update_loop_files "$img_type" "$new_loop" "$current_path"
+            INFO "成功绑定并挂载新设备: $new_loop -> /$img_file" >&2
+            return 0
+        else
+            losetup -d "$new_loop"
+            rm -f "$new_loop" 2>/dev/null
+            return 1
+        fi
+    else
+        losetup -d "$new_loop" 2>/dev/null
+        rm -f "$new_loop" 2>/dev/null
+        return 1
+    fi
+}
+
+cleanup_container_loops() {
+    INFO "开始清理容器内无效的loop设备绑定..." >&2
+    
+    local protected_loops=""
+    if [ -f "/ailg/.loop" ]; then
+        local media_loop=$(grep "^media " "/ailg/.loop" 2>/dev/null | awk '{print $2}')
+        local config_loop=$(grep "^config " "/ailg/.loop" 2>/dev/null | awk '{print $2}')
+        
+        if [ -n "$media_loop" ]; then
+            protected_loops="$protected_loops $media_loop"
+            INFO "保护media loop设备: $media_loop" >&2
+        fi
+        if [ -n "$config_loop" ]; then
+            protected_loops="$protected_loops $config_loop"
+            INFO "保护config loop设备: $config_loop" >&2
+        fi
+    fi
+    
+    local loop_devices=$(losetup -a)
+    local cleaned_count=0
+    
+    echo "$loop_devices" | while IFS= read -r line; do
+        if [ -z "$line" ]; then
+            continue
+        fi
+        
+        local loop_device=$(echo "$line" | cut -d: -f1)
+        local back_file=""
+        
+        local is_protected=false
+        for protected_loop in $protected_loops; do
+            if [ "$loop_device" = "$protected_loop" ]; then
+                is_protected=true
+                break
+            fi
+        done
+        
+        if [ "$is_protected" = true ]; then
+            INFO "跳过受保护的loop设备: $loop_device" >&2
+            continue
+        fi
+        
+        if echo "$line" | grep -q "("; then
+            back_file=$(echo "$line" | sed 's/.*(\([^)]*\)).*/\1/')
+        else
+            back_file=$(echo "$line" | awk '{print $NF}')
+        fi
+        
+        local should_cleanup=false
+        
+        if [ "$back_file" = "/" ]; then
+            should_cleanup=true
+            INFO "发现绑定到根目录的loop设备: $loop_device" >&2
+        elif [[ "$back_file" =~ ^/[^/]*\.img$ ]]; then
+            should_cleanup=true
+            INFO "发现无效绑定的loop设备: $loop_device -> $back_file" >&2
+        fi
+        
+        if [ "$should_cleanup" = true ]; then
+            INFO "正在清理loop设备: $loop_device" >&2
+            
+            if umount -l "$loop_device" 2>/dev/null; then
+                INFO "成功卸载: $loop_device" >&2
+            else
+                INFO "卸载失败或未挂载: $loop_device" >&2
+            fi
+            
+            if losetup -d "$loop_device" 2>/dev/null; then
+                if ! losetup -a | grep -q "^$loop_device:"; then
+                    INFO "成功解除绑定: $loop_device" >&2
+                    cleaned_count=$((cleaned_count + 1))
+                else
+                    WARN "解除绑定命令执行成功但设备仍存在: $loop_device" >&2
+                fi
+            else
+                WARN "解除绑定失败: $loop_device" >&2
+            fi
+        fi
+        
+    done
+    
+    if [ $cleaned_count -gt 0 ]; then
+        INFO "清理完成，共清理了 $cleaned_count 个无效的loop设备" >&2
+    else
+        INFO "未发现需要清理的无效loop设备" >&2
+    fi
+}
+
+if [ -f /media.img ]; then
+    chmod 777 /media.img
+    
+    if [ ! -d /volume_img ]; then
+        mkdir /volume_img
+    fi
+    
+    if grep -qs '/volume_img' /proc/mounts; then
+        umount -l /volume_img
+    fi
+    
+    cleanup_container_loops
+    
+    if ! get_loop_device "media.img"; then
+        echo "media.img loop设备绑定或挂载失败，程序退出！"
+        exit 1
+    fi   
+    echo "媒体库img镜像挂载成功！"
+    
+    if [ -d /media ]; then
+        if ! rm -rf /media; then
+            echo '删除/media失败！使用老G速装版emby请勿将任何目录挂载到容器的/media目录！程序退出！'
+            exit 1
+        fi
+    fi
+    ln -sf /volume_img/xiaoya /media
+    if [ -L "/volume_img/xiaoya/xiaoya" ]; then
+        rm -f "/volume_img/xiaoya/xiaoya"
+    fi
+    
+    if [ -f /config.img ]; then
+        if [ ! -d /volume_cfg ]; then
+            mkdir /volume_cfg
+        fi
+        
+        if grep -qs '/volume_cfg' /proc/mounts; then
+            umount -l /volume_cfg
+        fi
+        
+        if ! get_loop_device "config.img"; then
+            echo "config.img loop设备绑定或挂载失败，程序退出！"
+            exit 1
+        fi
+        
+        echo "config配置img镜像挂载成功！"
+        if sed -i 's/ \/config/ \/volume_cfg\/config/' /etc/services.d/emby-server/run; then
+            echo "replace emby's config successed"
+        fi
+    elif [ -d /volume_img/config ]; then
+        if sed -i 's/ \/config/ \/volume_img\/config/' /etc/services.d/emby-server/run; then
+            echo "replace emby's config successed"
+        fi
+    fi
+else
+    echo "media.img镜像不存在，请检查你的emby配置！"
+    exit 1
+fi

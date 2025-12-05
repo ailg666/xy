@@ -1,0 +1,138 @@
+#!/usr/bin/bash
+# shellcheck shell=sh
+# shellcheck disable=SC2114
+
+get_loop_device() {
+    local img_file="$1"
+    local offset="${2:-10000000}"
+    
+    local mount_dir
+    local state_file_dir
+    if [ "$img_file" = "media_jf.img" ]; then
+        mount_dir="/volume_img"
+        state_file_dir="/volume_img/xiaoya"
+    elif [ "$img_file" = "config_jf.img" ]; then
+        mount_dir="/volume_cfg"
+        state_file_dir="/volume_cfg/config_jf"
+    else
+        return 1
+    fi
+    
+    existing_loop=$(losetup -a | grep " $offset" | grep "/$img_file" | head -n1)
+    
+    if [ -n "$existing_loop" ]; then
+        loop_device=$(echo "$existing_loop" | cut -d: -f1)
+        
+        if mount "$loop_device" "$mount_dir" 2>/dev/null; then
+            if [ -f "$state_file_dir/.loop" ]; then
+                existing_path=$(cat "$state_file_dir/.loop" | cut -d' ' -f2-)
+                
+                current_path=$(cat /proc/self/mountinfo | grep -o "\/.*\.img /$img_file" | cut -d' ' -f1)
+                
+                if [ "$existing_path" = "$current_path" ]; then
+                    return 0
+                else
+                    umount -l "$loop_device"
+                fi
+            else
+                umount -l "$loop_device"
+            fi
+        fi
+    fi
+    
+    new_loop=$(losetup -f)
+    
+    if [ -n "$new_loop" ] && [ ! -e "$new_loop" ]; then
+        loop_num=$(echo "$new_loop" | grep -o '[0-9]\+$')
+        if ! mknod "$new_loop" b 7 "$loop_num" 2>/dev/null; then
+            return 1
+        fi
+    elif [ -z "$new_loop" ]; then
+        return 1
+    fi
+    
+    if losetup -o "$offset" "$new_loop" "/$img_file"; then
+        if mount "$new_loop" "$mount_dir"; then
+            mkdir -p "$state_file_dir"
+            current_path=$(cat /proc/self/mountinfo | grep -o "\/.*\.img /$img_file" | cut -d' ' -f1)
+            echo "$new_loop $current_path" > "$state_file_dir/.loop"
+            return 0
+        else
+            losetup -d "$new_loop"
+            rm -f "$new_loop" 2>/dev/null
+            return 1
+        fi
+    else
+        losetup -d "$new_loop" 2>/dev/null
+        rm -f "$new_loop" 2>/dev/null
+        return 1
+    fi
+}
+
+if [ -f /media_jf.img ]; then
+    chmod 777 /media_jf.img
+    
+    if [ ! -d /volume_img ]; then
+        mkdir /volume_img
+    fi
+    
+    if grep -qs '/volume_img' /proc/mounts; then
+        umount -l /volume_img
+    fi
+    
+    if ! get_loop_device "media_jf.img"; then
+        echo "media_jf.img loop设备绑定或挂载失败，程序退出！"
+        exit 1
+    fi
+    
+    echo "媒体库img镜像挂载成功！"
+    
+    if [ -d /media ]; then
+        mount | grep '/media' && umount /media
+        if [ ! -d /media/电影/豆瓣 top 1000部 ]; then
+            if ! rm -rf /media; then
+                echo '删除/media失败！使用老G速装版emby请勿将任何目录挂载到容器的/media目录！程序退出！'
+                exit 1
+            fi
+        fi
+    fi
+    ! ls /media && ln -sf /volume_img/xiaoya /media
+    if [ -L "/volume_img/xiaoya/xiaoya" ]; then
+        rm -f "/volume_img/xiaoya/xiaoya"
+    fi
+fi
+
+if [ -d /cache ]; then
+    mount | grep '/cache' && umount /cache
+    rm -rf /cache
+fi
+umount -l /config 2>/dev/null || true
+if ! rm -rf /config; then
+    echo "/config删除失败！程序退出！" 
+    exit 1
+fi
+
+if [ -f /config_jf.img ]; then
+    chmod 777 /config_jf.img
+
+    if [ ! -d /volume_cfg ]; then
+        mkdir /volume_cfg
+    fi
+
+    if grep -qs '/volume_cfg' /proc/mounts; then
+        umount -l /volume_cfg
+    fi
+
+    if ! get_loop_device "config_jf.img"; then
+        echo "config_jf.img loop设备绑定或挂载失败，程序退出！"
+        exit 1
+    fi
+    echo "config配置img镜像挂载成功！"
+    ln -sf /volume_cfg/config_jf/cache /cache   
+    ln -sf /volume_cfg/config_jf /config
+elif [ -d /volume_img/config ]; then
+    ln -sf /volume_img/config_jf/cache /cache   
+    ln -sf /volume_img/config_jf /config
+fi
+
+exec /jellyfin/jellyfin --datadir /config --cachedir /cache --ffmpeg /usr/lib/jellyfin-ffmpeg/ffmpeg "$@"

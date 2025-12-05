@@ -1,0 +1,93 @@
+#!/usr/bin/with-contenv sh
+# shellcheck shell=sh
+# shellcheck disable=SC2114
+
+create_loop_device() {
+    local loop_device="$1"
+    if [ ! -e "${loop_device}" ]; then
+        local loop_num=$(echo "${loop_device}" | grep -o '[0-9]\+$')
+        mknod "${loop_device}" b 7 "${loop_num}"
+    fi
+}
+
+# 清理已占用的 loop 设备
+cleanup_loop_device() {
+    local loop_device="$1"
+    local mount_point="$2"
+    
+    if losetup "${loop_device}" >/dev/null 2>&1; then
+        echo "检测到 ${loop_device} 已被占用，正在清理..."
+        if mount | grep -q "${loop_device}"; then
+            umount -l "${mount_point}" 2>/dev/null
+        fi
+        losetup -d "${loop_device}" 2>/dev/null
+        echo "已清理 ${loop_device}"
+    fi
+}
+
+[ ! -e "/dev/loop22" ] && create_loop_device "/dev/loop22"
+[ ! -e "/dev/loop21" ] && create_loop_device "/dev/loop21"
+
+if [ -f /media.img ]; then
+    chmod 777 /media.img
+	if [ ! -d /volume_img ]; then
+        mkdir /volume_img
+    fi
+    if grep -qs '/volume_img' /proc/mounts; then
+        umount -l /volume_img
+    fi
+	
+    # 清理可能已占用的 loop22
+    cleanup_loop_device "/dev/loop22" "/volume_img"
+	
+    # if ! losetup -o 10000000 /dev/loop22 /media.img; then
+	#     echo "losetup 绑定 /media.img 失败！程序退出！"
+	#     exit 1
+	# fi
+	
+	if ! mount /dev/loop22 /volume_img; then
+	    echo "媒体库img镜像挂载失败！程序退出！"
+	    exit 1
+	fi
+    echo "媒体库img镜像挂载成功！"
+    if [ -d /media ]; then
+		if ! rm -rf /media; then
+		    echo '删除/media失败！使用老G速装版emby请勿将任何目录挂载到容器的/media目录！程序退出！'
+            exit 1
+        fi
+    fi
+    ln -sf /volume_img/xiaoya /media
+	if [ -L "/volume_img/xiaoya/xiaoya" ]; then
+		unlink /volume_img/xiaoya/xiaoya
+	fi
+	if [ -f /config.img ]; then
+		if [ ! -d /volume_cfg ]; then
+	        mkdir /volume_cfg
+	    fi
+		if grep -qs '/volume_cfg' /proc/mounts; then
+	        umount -l /volume_cfg
+	    fi
+		
+		# 清理可能已占用的 loop21
+		cleanup_loop_device "/dev/loop21" "/volume_cfg"
+		
+		if ! losetup -o 10000000 /dev/loop21 /config.img; then
+		    echo "losetup 绑定 /config.img 失败！程序退出！"
+		    exit 1
+		fi
+		if mount /dev/loop21 /volume_cfg; then
+    		echo "config配置img镜像挂载成功！"
+		else
+			echo "config配置img镜像挂载失败，程序退出！" && exit 1
+		fi
+		if sed -i 's/ \/config/ \/volume_cfg\/config/' /etc/services.d/emby-server/run; then
+		    echo "replace emby's config successed"
+	    fi
+	elif [ -d  /volume_img/config ]; then
+		if sed -i 's/ \/config/ \/volume_img\/config/' /etc/services.d/emby-server/run; then
+		    echo "replace emby's config successed"
+	    fi
+	fi
+else
+    echo "img 镜像未挂载，跳过自动挂载！"
+fi

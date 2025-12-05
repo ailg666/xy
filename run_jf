@@ -1,0 +1,43 @@
+#!/usr/bin/bash
+# shellcheck shell=sh
+# shellcheck disable=SC2114
+
+if [ -f /media.img ]; then
+    chmod 777 /media.img
+	if [ ! -d /volume_img ]; then
+        mkdir /volume_img
+    fi
+    if grep -qs '/volume_img' /proc/mounts; then
+        umount /volume_img
+        wait ${!}
+    fi
+    losetup -o 10000000 /dev/loop6 /media.img 
+	mount /dev/loop6 /volume_img
+	wait ${!}
+    echo "img 镜像挂载成功！"
+    if [ -d /media ]; then
+		mount | grep '/media' && umount /media
+		if ! rm -rf /media; then
+		    echo '删除/media失败！使用老G速装版emby请勿将任何目录挂载到容器的/media目录！程序退出！'
+            exit 1
+        fi
+    fi
+	
+	if [ -d /cache ]; then
+		mount | grep '/cache' && umount /cache
+		rm -rf /cache
+	fi
+	umount /config
+	if ! rm -rf /config;then
+		echo "/config删除失败！程序退出！" 
+		exit 1
+	fi
+	ln -sf /volume_img/config_jf/cache /cache
+    ln -sf /volume_img/xiaoya /media
+    ln -sf /volume_img/config_jf /config
+else
+    echo "img 镜像未挂载，跳过自动挂载！"
+fi
+
+exec /jellyfin/jellyfin --datadir /config --cachedir /cache --ffmpeg /usr/lib/jellyfin-ffmpeg/ffmpeg "$@"
+

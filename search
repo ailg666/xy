@@ -1,0 +1,139 @@
+#!/bin/bash                                                   
+                                                                          
+#OIFS="$IFS"                                                      
+#IFS="${IFS}&"                                                    
+#set $QUERY_STRING                                                
+#Args="$*"                                                        
+#IFS="$OIFS"                                                              
+              
+TYPE=${QUERY_STRING#*type=}
+TYPE=${TYPE%%&*} 
+type=${TYPE//+/ }                                                            
+URL=${QUERY_STRING#*url=}                                                 
+URL=${URL%%&*}                                                            
+URL=${URL//+/ }                                                           
+BOX=${QUERY_STRING#*box=}                                                 
+BOX=${BOX%%&*}                                                            
+BOX=${BOX//+/ }
+CALL=${QUERY_STRING#*call=}
+CALL=${CALL%%&*}
+CALL=${CALL//+/ }                                                           
+                                                                          
+function urldecode() { : "${*//+/ }"; echo -e "${_//%/\\x}"; }            
+
+# 检查是否为 strem-gbox API 调用
+if [ "$CALL" = "strem-gbox" ]; then
+    # 返回 JSON 格式数据
+    echo "Content-type: application/json;charset=UTF-8"
+    echo ""
+    
+    box=$(urldecode $BOX)
+    box=${box// /\.\*} 
+    keyword_len=${#box}
+
+    if [[ "$keyword_len"  -gt 40 ]]; then
+        echo '{"error": "输入的搜索关键词太长了，请重新输入", "results": []}'
+        exit 0
+    elif [[ "$keyword_len"  -le 1 ]]; then
+        echo '{"error": "输入的搜索关键词太短了，请重新输入", "results": []}'
+        exit 0
+    fi
+
+    if [ $type = "video" ]; then
+        indexfile='/index/index.video.txt'
+    elif [ $type = "music" ]; then
+        indexfile='/index/index.music.txt'
+    elif [ $type = "ebook" ]; then
+        indexfile='/index/index.book.txt'
+    else
+        indexfile='/index/index.txt'
+    fi
+
+    # 搜索并格式化为 JSON
+    echo "{"
+    echo '"results": ['
+    
+    # 使用 grep 搜索并处理结果
+    first=true
+    while IFS= read -r line; do
+        if [ -n "$line" ]; then
+            # 解析索引行: ./path#title#doubanId#rating#posterUrl[#year#region#genres]
+            # 前5个字段是必须的，后3个字段是可选的
+            IFS='#' read -ra PARTS <<< "$line"
+            if [ ${#PARTS[@]} -ge 5 ]; then
+                path="${PARTS[0]#./}"  # 去掉开头的 ./
+                title="${PARTS[1]}"
+                doubanId="${PARTS[2]}"
+                rating="${PARTS[3]}"
+                posterUrl="${PARTS[4]}"
+
+                # 可选字段，如果不存在则使用默认值
+                year="${PARTS[5]:-}"
+                region="${PARTS[6]:-}"
+                genres="${PARTS[7]:-}"
+
+                # 输出 JSON 对象
+                if [ "$first" = true ]; then
+                    first=false
+                else
+                    echo ","
+                fi
+
+                echo "    {"
+                echo "      \"path\": \"$path\","
+                echo "      \"title\": \"$title\","
+                echo "      \"doubanId\": \"$doubanId\","
+                echo "      \"rating\": \"$rating\","
+                echo "      \"posterUrl\": \"$posterUrl\","
+                echo "      \"year\": \"$year\","
+                echo "      \"region\": \"$region\","
+                echo "      \"genres\": \"$genres\""
+                echo -n "    }"
+            fi
+        fi
+    done < <(/bin/grep -i "$box" "$indexfile" 2>/dev/null)
+    
+    echo ""
+    echo "]"
+    echo "}"
+    exit 0
+fi
+
+# 原有的 HTML 输出逻辑（保持不变）
+echo "Content-type: text/html;charset=UTF-8"                              
+echo ""                                                                   
+                                                                          
+cat header.html                                                                
+
+echo "<div>"
+echo "<ul>"
+
+box=$(urldecode $BOX)
+box=${box// /\.\*} 
+keyword_len=${#box}
+
+if [[ "$keyword_len"  -gt 40 ]]; then
+        echo "<h2>输入的搜索关键词太长了，请重新输入</h2>" "<p>"
+        echo "</ul></div></body></html>"  
+        exit 0
+elif [[ "$keyword_len"  -le 1 ]]; then
+        echo "<h2>输入的搜索关键词太短了，请重新输入</h2>" "<p>" 
+        echo "</ul></div></body></html>"
+        exit 0
+fi
+
+if [ $type = "video" ]; then
+        indexfile='/index/index.video.txt'
+elif [ $type = "music" ]; then
+        indexfile='/index/index.music.txt'
+elif [ $type = "ebook" ]; then
+        indexfile='/index/index.book.txt'
+else
+        indexfile='/index/index.txt'
+fi
+
+#echo -e `/bin/grep -i -E $box /index.txt|sed 's/ /%20/g' |sed 's/^\.\///g'| sed "s/\(.*\)/<li><a href=$host\/&>&<\/a><br><\/li>/g"`
+echo -e `/bin/grep -i $box $indexfile|cut -f1 -d#|sed 's/^\.\///g'|awk -v host=$host '{after=$0;before=$0;gsub(/ /,"%20",$after);print "<a href="$after">"before"</a><br></li>"}'`
+
+echo "</ul></div></body></html>"
+exit 0
