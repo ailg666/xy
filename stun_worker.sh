@@ -23,6 +23,17 @@ LOGO
 
 logo
 
+if ! command -v curl >/dev/null 2>&1; then
+  cp /etc/apk/repositories /etc/apk/repositories.bak
+  sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
+  apk add --no-cache -q curl >/dev/null 2>&1
+  if ! command -v curl >/dev/null 2>&1; then
+    cp /etc/apk/repositories.bak /etc/apk/repositories
+    echo "curl install failed" >&2
+    exit 1
+  fi
+fi
+
 if ! command -v jq >/dev/null 2>&1; then
   cp /etc/apk/repositories /etc/apk/repositories.bak
   sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
