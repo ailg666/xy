@@ -1953,8 +1953,9 @@ user_selecto() {
         echo -e "\033[1;32m14、屏蔽Emby 6908端口（防止自动跳转）\033[0m\033[0m"
         echo -e "\033[1;32m15、一键重装系统\033[0m\033[0m"
         echo -e "\n"
+        echo -e "\033[1;32m16、容器配置修改（修改挂载点/端口/环境变量）\033[0m\033[0m"
         echo -e "——————————————————————————————————————————————————————————————————————————————————"
-        read -erp "请输入您的选择（1-15，按b返回上级菜单或按q退出）：" fo_select
+        read -erp "请输入您的选择（1-16，按b返回上级菜单或按q退出）：" fo_select
         case "$fo_select" in
         1) ailg_uninstall; break ;;
         2) happy_emby; break ;;
@@ -1971,6 +1972,7 @@ user_selecto() {
         13) legacy_emby_rebuild; break ;;
         14) emby_close_6908_port; break ;;
         15) dd_xitong; break ;;
+        16) modify_container_interactive; break ;;
         [Bb]) clear; break ;;
         [Qq]) exit 0 ;;
         *)

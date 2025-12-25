@@ -2363,20 +2363,21 @@ modify_config_menu() {
         clear
         echo -e "——————————————————————————————————————— \033[1;33m配置修改菜单\033[0m ———————————————————————————————————————"
         echo -e "\n"
-        INFO "容器名称：${container_name}"
+        echo -e "容器名称：\033[1;32m${container_name}\033[0m"
         echo -e "\n"
-        echo -e "\033[1;33m请选择要修改的配置：\033[0m"
-        echo -e "[ 1 ] 添加/修改路径挂载"
-        echo -e "[ 2 ] 添加/修改环境变量"
-        echo -e "[ 3 ] 修改网络模式/端口"
-        echo -e "[ 4 ] 添加其他额外参数"
-        echo -e "[ 0 ] 保存并重建容器"
-        echo -e "[ B ] 取消修改"
+        echo -e "\033[1;33m1、添加/修改路径挂载\033[0m"
+        echo -e "\033[1;33m2、添加/修改环境变量\033[0m"
+        echo -e "\033[1;33m3、修改网络模式/端口\033[0m"
+        echo -e "\033[1;33m4、添加其他额外参数\033[0m"
         echo -e "\n"
+        echo -e "\033[1;32m0、确认所有修改并重建容器\033[0m"
+        echo -e "\033[1;31mb、取消修改并返回\033[0m"
+        echo -e "\n"
+        echo -e "—————————————————————————————————————————————————————————————————————————————————"
         
-        read -erp "请选择：" choice
+        read -erp "请选择操作（0-4, b返回）：" menu_choice
         
-        case "$choice" in
+        case "$menu_choice" in
             1)
                 modify_mount "$config_file"
                 ;;
@@ -2439,7 +2440,7 @@ modify_mount() {
         local container_path=$(echo "$mount_input" | cut -d':' -f2)
         
         # 检查容器路径是否已存在（基于文件内容）
-        if grep -qE "(--volume|-v)[[:space:]]+[^[:space:]]+:${container_path}([[:space:]]|\\\|$)" "$config_file"; then
+        if grep -qE "(--volume|-v)[[:space:]]+[^[:space:]]+:${container_path}([[:space:]]|\\\\|$)" "$config_file"; then
             WARN "容器路径 ${container_path} 已存在挂载，这将修改原有挂载"
             read -erp "是否继续？(y/n)：" confirm
             if [[ ! $confirm == [Yy] ]]; then
@@ -2562,90 +2563,77 @@ modify_network() {
     
     case "$network_choice" in
         1)
-            # 删除旧的网络配置和端口映射
             sed -i 's|--network=[^[:space:]]*||g' "$config_file"
             sed -i 's|--net=[^[:space:]]*||g' "$config_file"
             sed -i -E 's#(--publish|-p)[= ]+[^[:space:]]+([[:space:]]|$)# #g' "$config_file"
-            # 清理多余空格
             sed -i 's/  */ /g' "$config_file"
-            # 添加 host 网络
             sed -i "s|--name=${container_name} |--name=${container_name} --network=host |" "$config_file"
             INFO "已设置为 host 网络模式"
             read -n 1 -rp "按任意键返回"
             ;;
         2)
-            # 删除旧的网络配置
             sed -i 's|--network=host||g' "$config_file"
             sed -i 's|--net=host||g' "$config_file"
-            # 清理多余空格
             sed -i 's/  */ /g' "$config_file"
             
-            # 桥接模式下可以添加端口映射
-            while true; do
-                echo -e "\n"
-                INFO "当前端口映射："
-                grep -oE "(--publish|-p)\s+[0-9]+:[0-9]+" "$config_file" | sed 's/^\s*//'
-                echo -e "\n"
-                echo -e "输入格式：主机端口:容器端口"
-                echo -e "示例：8080:80"
-                echo -e "输入 'b' 返回网络模式选择"
-                echo -e "\n"
-                
-                read -erp "请输入端口映射：" port_input
-                
-                if [[ $port_input == [Bb] ]]; then
-                    break
-                fi
-                
-                # 验证输入格式
-                if [[ ! $port_input =~ ^[0-9]+:[0-9]+ ]]; then
-                    ERROR "格式错误！请使用：主机端口:容器端口"
-                    read -n 1 -rp "按任意键继续"
-                    continue
-                fi
-                
-                local host_port=$(echo "$port_input" | cut -d':' -f1)
-                local container_port=$(echo "$port_input" | cut -d':' -f2)
-                
-                # 检查主机端口是否被占用
-                if netstat -tuln 2>/dev/null | grep -q ":${host_port}\s"; then
-                    WARN "主机端口 ${host_port} 可能已被占用"
-                    read -erp "是否继续？(y/n)：" confirm
-                    if [[ ! $confirm == [Yy] ]]; then
+            echo -e "\n"
+            INFO "当前端口映射："
+            grep -oE "(--publish|-p)[= ]+[0-9]+:[0-9]+[^[:space:]]*" "$config_file" | sed 's/^\s*//'
+            echo -e "\n"
+            read -erp "是否修改/添加端口映射？(y/n)：" modify_port
+            
+            if [[ $modify_port == [Yy] ]]; then
+                while true; do
+                    echo -e "\n"
+                    echo -e "输入格式：主机端口:容器端口 或 主机端口:容器端口/tcp 或 主机端口:容器端口/udp"
+                    echo -e "示例：8080:80 或 8080:80/tcp"
+                    echo -e "输入 'b' 完成端口配置"
+                    read -erp "请输入端口映射：" port_input
+                    
+                    if [[ $port_input == [Bb] ]]; then
+                        break
+                    fi
+
+                    if [[ ! $port_input =~ ^[0-9]+:[0-9]+(/tcp|/udp)?$ ]]; then
+                        ERROR "格式错误！"
                         continue
                     fi
-                fi
-                
-                # 检查容器端口是否已存在映射（基于文件内容）
-                local container_port_base=$(echo "$container_port" | cut -d'/' -f1)
-                if grep -qE "(--publish|-p)[= ]+[0-9]+:${container_port_base}" "$config_file"; then
-                    WARN "容器端口 ${container_port_base} 已存在映射"
-                    read -erp "是否覆盖？(y/n)：" confirm
-                    if [[ $confirm == [Yy] ]]; then
-                        # 删除旧的端口映射 - 使用 | 作为分隔符以避免端口/协议格式的问题
-                        sed -i -E "s#(--publish|-p)[= ]+[0-9]+:${container_port_base}[^[:space:]]*([[:space:]]|$)# #g" "$config_file"
-                        # 清理多余空格
-                        sed -i 's/  */ /g' "$config_file"
-                    else
-                        continue
+                    local host_port=$(echo "$port_input" | cut -d':' -f1)
+                    local container_port=$(echo "$port_input" | cut -d':' -f2)
+                    if netstat -tuln 2>/dev/null | grep -q ":${host_port}\s"; then
+                        WARN "主机端口 ${host_port} 可能已被占用"
+                        read -erp "是否继续？(y/n)：" confirm
+                        if [[ ! $confirm == [Yy] ]]; then
+                            continue
+                        fi
                     fi
-                fi
                 
-                # 添加端口映射
-                sed -i "s|--name=${container_name} |--name=${container_name} --publish ${port_input} |" "$config_file"
-                INFO "已添加端口映射：${port_input}"
+                    local container_port_base=$(echo "$container_port" | cut -d'/' -f1)
+                    if grep -qE "(--publish|-p)[= ]+[0-9]+:${container_port_base}" "$config_file"; then
+                        WARN "容器端口 ${container_port_base} 已存在映射"
+                        read -erp "是否覆盖？(y/n)：" confirm
+                        if [[ $confirm == [Yy] ]]; then
+                            sed -i -E "s#(--publish|-p)[= ]+[0-9]+:${container_port_base}[^[:space:]]*([[:space:]]|$)# #g" "$config_file"
+                            sed -i 's/  */ /g' "$config_file"
+                        else
+                            continue
+                        fi
+                    fi
                 
-                read -erp "是否继续添加端口？(y/n)：" continue_port
-                if [[ ! $continue_port == [Yy] ]]; then
-                    break
-                fi
-            done
-        
+                    sed -i "s|--name=${container_name} |--name=${container_name} --publish ${port_input} |" "$config_file"
+                    INFO "已添加端口映射：${port_input}"
+                    
+                    read -erp "是否继续添加端口？(y/n)：" continue_port
+                    if [[ ! $continue_port == [Yy] ]]; then
+                        break
+                    fi
+                done
+            fi
+
             INFO "已设置为 bridge 网络模式"
             read -n 1 -rp "按任意键返回"
             ;;
         3)
-            # 自定义网络模式
             echo -e "\n"
             INFO "当前网络配置："
             if grep -qE "\s*(--network=|--net=)" "$config_file"; then
@@ -2662,13 +2650,10 @@ modify_network() {
                 return 0
             fi
             
-            # 删除旧的网络配置
             sed -i 's|--network=[^[:space:]]*||g' "$config_file"
             sed -i 's|--net=[^[:space:]]*||g' "$config_file"
-            # 清理多余空格
             sed -i 's/  */ /g' "$config_file"
             
-            # 添加自定义网络
             sed -i "s|--name=${container_name} |--name=${container_name} --network=${custom_network} |" "$config_file"
             INFO "已设置为自定义网络：${custom_network}"
             read -n 1 -rp "按任意键返回"
@@ -2683,7 +2668,6 @@ modify_network() {
     esac
 }
 
-# 4、添加其他额外参数
 modify_extra_params() {
     local config_file="$1"
     
@@ -2712,7 +2696,6 @@ modify_extra_params() {
             continue
         fi
         
-        # 检查参数是否已存在（基于文件内容）
         local param_name=$(echo "$extra_param" | cut -d'=' -f1)
         if grep -qF "$param_name" "$config_file"; then
             WARN "参数 ${param_name} 可能已存在"
@@ -2722,7 +2705,6 @@ modify_extra_params() {
             fi
         fi
         
-        # 检查网络相关参数冲突
         if [[ "$extra_param" == --network=host || "$extra_param" == --net=host ]]; then
             if grep -qE "(--publish|-p)[= ]+" "$config_file"; then
                 WARN "当前配置包含端口映射(-p)，但添加--network=host后端口映射将无效"
@@ -2741,7 +2723,6 @@ modify_extra_params() {
             fi
         fi
         
-        # 添加参数
         sed -i "s|--name=${container_name} |--name=${container_name} ${extra_param} |" "$config_file"
         
         INFO "已添加参数：${extra_param}"
@@ -2752,7 +2733,6 @@ modify_extra_params() {
     done
 }
 
-# 0、确认并重建容器
 rebuild_container() {
     local container_name="$1"
     local config_file="$2"
@@ -2768,7 +2748,6 @@ rebuild_container() {
     echo -e "\033[0m"
     echo -e "\n"
     
-    # 显示变更摘要
     echo -e "\033[1;33m配置变更摘要：\033[0m"
     local volume_count=$(grep -oE "(--volume|-v)[= ]+" "$config_file" | wc -l)
     local env_count=$(grep -oE "(--env|-e)[= ]+" "$config_file" | wc -l)
@@ -2794,11 +2773,8 @@ rebuild_container() {
         read -n 1 -rp "按任意键返回"
         return 1
     fi
+        sed -i "s|--name=${container_name} |--name=${container_name}_new |" "$config_file"
     
-    # 修改配置文件中的容器名
-    sed -i "s|--name=${container_name} |--name=${container_name}_new |" "$config_file"
-    
-    # 获取容器状态
     local was_running=false
     if [ "$(docker inspect -f '{{.State.Running}}' "${container_name}" 2>/dev/null)" == "true" ]; then
         was_running=true
@@ -2851,3 +2827,4 @@ export -f INFO ERROR WARN \
     cleanup_invalid_loops get_loop_from_state_file update_loop_state_file check_loop_binding smart_bind_loop_device \
     check_proxy_health setup_gh_proxy dd_xitong \
     modify_container_interactive modify_config_menu modify_mount modify_env modify_network modify_extra_params rebuild_container
+    
