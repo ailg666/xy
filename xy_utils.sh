@@ -2823,10 +2823,9 @@ rebuild_container() {
     echo -e "  网络模式: ${network:-default}"
     echo -e "\n"
     
-    WARN "即将重建容器，此操作将："
+   WARN "即将重建容器，此操作将："
     echo -e "  1. 停止并删除现有容器"
     echo -e "  2. 使用新配置创建容器"
-    echo -e "  3. 旧容器将备份为 ${container_name}_old"
     echo -e "\n"
     
     read -erp "确认重建容器？(yes/no)：" final_confirm
@@ -2836,46 +2835,20 @@ rebuild_container() {
         read -n 1 -rp "按任意键返回"
         return 1
     fi
-        sed -i "s|--name=${container_name} |--name=${container_name}_new |" "$config_file"
     
-    local was_running=false
-    if [ "$(docker inspect -f '{{.State.Running}}' "${container_name}" 2>/dev/null)" == "true" ]; then
-        was_running=true
-    fi
+    INFO "删除旧容器 ${container_name}..."
+    was_running=$(docker inspect -f '{{.State.Running}}' "${container_name}" 2>/dev/null)
+    docker rm -f "${container_name}" > /dev/null 2>&1
     
-    INFO "停止容器 ${container_name}..."
-    docker stop "${container_name}" > /dev/null 2>&1
-    
-    INFO "重命名旧容器为 ${container_name}_old..."
-    docker rename "${container_name}" "${container_name}_old" > /dev/null 2>&1
-    
-    INFO "创建新容器..."
-    if bash "${config_file}"; then
-        docker rename "${container_name}_new" "${container_name}" > /dev/null 2>&1
-        
+    INFO "创建并启动新容器..."
+    if bash "${config_file}"; then        
         if [ "$was_running" == "true" ]; then
-            INFO "启动容器 ${container_name}..."
             docker start "${container_name}" > /dev/null 2>&1
-        fi
-        
-        INFO "容器重建成功！"
-        INFO "旧容器已保留为：${container_name}_old"
-        echo -e "\n"
-        read -erp "是否删除旧容器？(y/n)：" delete_old
-        if [[ $delete_old == [Yy] ]]; then
-            docker rm -f "${container_name}_old" > /dev/null 2>&1
-            INFO "旧容器已删除"
+            INFO "${container_name} 容器已启动"
         fi
     else
-        ERROR "创建新容器失败！正在回滚..."
-        docker rm -f "${container_name}_new" > /dev/null 2>&1
-        docker rename "${container_name}_old" "${container_name}" > /dev/null 2>&1
-        
-        if [ "$was_running" == "true" ]; then
-            docker start "${container_name}" > /dev/null 2>&1
-        fi
-        
-        ERROR "回滚完成，容器已恢复原状态"
+        docker rm -f "${container_name}" > /dev/null 2>&1      
+        ERROR "容器重构失败，已直接删除，请结合日志排查解决！"
     fi
     
     read -n 1 -rp "按任意键返回主菜单"
