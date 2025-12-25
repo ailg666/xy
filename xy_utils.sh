@@ -1520,20 +1520,45 @@ emby_close_6908_port() {
         "$NETWORK_NAME"
     INFO "网络 $NETWORK_NAME 创建成功！"
 
-    if docker inspect ddsderek/runlike:latest > /dev/null 2>&1; then
-        local local_sha remote_sha
-        local_sha=$(docker inspect --format='{{index .RepoDigests 0}}' ddsderek/runlike:latest 2> /dev/null | cut -f2 -d:)
-        remote_sha=$(curl -s -m 10 "https://hub.docker.com/v2/repositories/ddsderek/runlike/tags/latest" | grep -o '"digest":"[^"]*' | grep -o '[^"]*$' | tail -n1 | cut -f2 -d:)
-        if [ "$local_sha" != "$remote_sha" ]; then
-            docker rmi ddsderek/runlike:latest
-            docker_pull "ddsderek/runlike:latest"
-        fi
-    else
-        docker_pull "ddsderek/runlike:latest"
+    # 检测系统架构并下载对应版本的 runlike 二进制文件
+    local arch=$(uname -m)
+    local os_type=$(uname -s | tr '[:upper:]' '[:lower:]')
+    
+    case "${arch}" in
+        x86_64|amd64)
+            arch="amd64"
+            ;;
+        aarch64|arm64)
+            arch="arm64"
+            ;;
+        armv7l|armv7)
+            arch="armv7"
+            ;;
+        *)
+            ERROR "不支持的架构: ${arch}"
+            return 1
+            ;;
+    esac
+    
+    local runlike_binary="runlike-${os_type}-${arch}"
+    local runlike_url="https://ailg.ggbond.org/${runlike_binary}"
+    
+    if ! curl -L -o "/tmp/${runlike_binary}" "${runlike_url}"; then
+        ERROR "下载 runlike 失败！"
+        return 1
     fi
     
+    chmod +x "/tmp/${runlike_binary}"
+    
     INFO "获取 ${emby_name} 容器信息中..."
-    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp ddsderek/runlike -p "${emby_name}" > "/tmp/container_update_${emby_name}"
+    if ! "/tmp/${runlike_binary}" -p "${emby_name}" > "/tmp/container_update_${emby_name}"; then
+        ERROR "提取容器配置失败！"
+        rm -f "/tmp/${runlike_binary}"
+        return 1
+    fi
+    
+    # 清理临时二进制文件
+    rm -f "/tmp/${runlike_binary}"
     
     INFO "更改 Emby 为 only_for_emby 模式并取消端口映射中..."
     if grep -q 'network=host' "/tmp/container_update_${emby_name}"; then
@@ -2329,22 +2354,50 @@ modify_container_interactive() {
     INFO "正在提取容器配置..."
     local runlike_file="/tmp/container_config_${selected_container}_$$.sh"
     
-    # 拉取 runlike 镜像
-    local runlike_image="ailg/runlike:latest"
-    if ! docker inspect "$runlike_image" > /dev/null 2>&1; then
-        runlike_image="ddsderek/runlike:latest"
-        if ! docker inspect "$runlike_image" > /dev/null 2>&1; then
-            INFO "拉取 runlike 镜像..."
-            docker_pull "$runlike_image"
-        fi
-    fi
+    # 检测系统架构并下载对应版本的 runlike 二进制文件
+    local arch=$(uname -m)
+    local os_type=$(uname -s | tr '[:upper:]' '[:lower:]')
     
-    if ! docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp "$runlike_image" -p "${selected_container}" > "${runlike_file}"; then
-        ERROR "提取容器配置失败！"
+    case "${arch}" in
+        x86_64|amd64)
+            arch="amd64"
+            ;;
+        aarch64|arm64)
+            arch="arm64"
+            ;;
+        armv7l|armv7)
+            arch="armv7"
+            ;;
+        *)
+            ERROR "不支持的架构: ${arch}"
+            rm -f "${runlike_file}"
+            read -n 1 -rp "按任意键返回"
+            return 1
+            ;;
+    esac
+    
+    local runlike_binary="runlike-${os_type}-${arch}"
+    local runlike_url="https://ailg.ggbond.org/${runlike_binary}"
+    
+    if ! curl -L -o "/tmp/${runlike_binary}" "${runlike_url}"; then
+        ERROR "下载 runlike 失败！"
         rm -f "${runlike_file}"
         read -n 1 -rp "按任意键返回"
         return 1
     fi
+    
+    chmod +x "/tmp/${runlike_binary}"
+    
+    if ! "/tmp/${runlike_binary}" -p "${selected_container}" > "${runlike_file}"; then
+        ERROR "提取容器配置失败！"
+        rm -f "${runlike_file}"
+        rm -f "/tmp/${runlike_binary}"
+        read -n 1 -rp "按任意键返回"
+        return 1
+    fi
+    
+    # 清理临时二进制文件
+    rm -f "/tmp/${runlike_binary}"
     
     INFO "配置已提取到：${runlike_file}"
     
