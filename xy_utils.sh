@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 
 # ——————————————————————————————————————————————————————————————————————————————————
 #  $$$$$$\          $$$$$$$\   $$$$$$\  $$\   $$\ 
@@ -1838,7 +1838,10 @@ smart_bind_loop_device() {
     
     INFO "开始智能绑定loop设备: $img_file" >&2
     
-    cleanup_invalid_loops "$img_file"
+    # 先清理无效的loop设备
+    cleanup_invalid_loops
+    
+    # 尝试从状态文件获取loop设备号
     
     local loop_device=""
     if loop_device=$(get_loop_from_state_file "$img_file"); then
@@ -2280,6 +2283,565 @@ dd_xitong() {
     done
 }
 
+# 交互式容器配置修改功能
+modify_container_interactive() {
+    clear
+    echo -e "——————————————————————————————————————— \033[1;33m容器配置修改\033[0m ———————————————————————————————————————"
+    echo -e "\n"
+    INFO "此功能用于对已存在的Docker容器添加/修改配置参数"
+    WARN "注意：修改配置会重建容器，请确保重要数据已备份！"
+    echo -e "\n"
+    
+    # 选择容器
+    INFO "获取容器列表..."
+    local containers=($(docker ps -a --format '{{.Names}}'))
+    
+    if [ ${#containers[@]} -eq 0 ]; then
+        ERROR "没有找到任何容器！"
+        read -n 1 -rp "按任意键返回"
+        return 1
+    fi
+    
+    echo -e "\033[1;33m可用容器列表：\033[0m"
+    for i in "${!containers[@]}"; do
+        local status=$(docker inspect -f '{{.State.Status}}' "${containers[$i]}")
+        echo -e "[ $((i + 1)) ] ${containers[$i]} [$status]"
+    done
+    echo -e "[ 0 ] 退出"
+    echo -e "\n"
+    
+    read -erp "请选择要修改的容器序号：" container_select
+    
+    if [ "$container_select" -eq 0 ]; then
+        return 0
+    fi
+    
+    if [ "$container_select" -lt 1 ] || [ "$container_select" -gt ${#containers[@]} ]; then
+        ERROR "无效的序号！"
+        read -n 1 -rp "按任意键返回"
+        return 1
+    fi
+    
+    local selected_container="${containers[$((container_select - 1))]}"
+    INFO "已选择容器：${selected_container}"
+    
+    # 使用 runlike 提取配置
+    INFO "正在提取容器配置..."
+    local runlike_file="/tmp/container_config_${selected_container}_$$.sh"
+    
+    # 拉取 runlike 镜像
+    local runlike_image="ailg/runlike:latest"
+    if ! docker inspect "$runlike_image" > /dev/null 2>&1; then
+        runlike_image="ddsderek/runlike:latest"
+        if ! docker inspect "$runlike_image" > /dev/null 2>&1; then
+            INFO "拉取 runlike 镜像..."
+            docker_pull "$runlike_image"
+        fi
+    fi
+    
+    if ! docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp "$runlike_image" -p "${selected_container}" > "${runlike_file}"; then
+        ERROR "提取容器配置失败！"
+        rm -f "${runlike_file}"
+        read -n 1 -rp "按任意键返回"
+        return 1
+    fi
+    
+    INFO "配置已提取到：${runlike_file}"
+    
+    # 进入配置修改菜单
+    modify_config_menu "$selected_container" "$runlike_file"
+    
+    rm -f "${runlike_file}"
+}
+
+# 配置修改菜单
+modify_config_menu() {
+    local container_name="$1"
+    local config_file="$2"
+    
+    while true; do
+        clear
+        echo -e "——————————————————————————————————————— \033[1;33m配置修改菜单\033[0m ———————————————————————————————————————"
+        echo -e "\n"
+        INFO "容器名称：${container_name}"
+        echo -e "\n"
+        echo -e "\033[1;33m请选择要修改的配置：\033[0m"
+        echo -e "[ 1 ] 添加/修改路径挂载"
+        echo -e "[ 2 ] 添加/修改环境变量"
+        echo -e "[ 3 ] 修改网络模式/端口"
+        echo -e "[ 4 ] 添加其他额外参数"
+        echo -e "[ 0 ] 保存并重建容器"
+        echo -e "[ B ] 取消修改"
+        echo -e "\n"
+        
+        read -erp "请选择：" choice
+        
+        case "$choice" in
+            1)
+                modify_mount "$config_file"
+                ;;
+            2)
+                modify_env "$config_file"
+                ;;
+            3)
+                modify_network "$config_file"
+                ;;
+            4)
+                modify_extra_params "$config_file"
+                ;;
+            0)
+                rebuild_container "$container_name" "$config_file"
+                return 0
+                ;;
+            [Bb])
+                INFO "已取消修改"
+                read -n 1 -rp "按任意键返回"
+                return 0
+                ;;
+            *)
+                ERROR "无效的选择！"
+                read -n 1 -rp "按任意键继续"
+                ;;
+        esac
+    done
+}
+
+# 1、添加/修改路径挂载
+modify_mount() {
+    local config_file="$1"
+    
+    while true; do
+        clear
+        echo -e "——————————————————————————————————————— \033[1;33m添加/修改挂载\033[0m ———————————————————————————————————————"
+        echo -e "\n"
+        echo -e "当前挂载列表："
+        grep -oE "(--volume|-v)\s+[^[:space:]]+:[^[:space:]]+" "$config_file" | sed 's/^\s*//'
+        echo -e "\n"
+        echo -e "输入格式：宿主机绝对路径:容器绝对路径"
+        echo -e "示例：/home/data:/mnt/data"
+        echo -e "输入 'b' 返回上级菜单"
+        echo -e "\n"
+        
+        read -erp "请输入挂载配置：" mount_input
+        
+        if [[ $mount_input == [Bb] ]]; then
+            break
+        fi
+        
+        # 验证输入格式
+        if [[ ! $mount_input =~ ^/[^:]+:/[^:]+$ ]]; then
+            ERROR "格式错误！请使用：宿主机绝对路径:容器绝对路径"
+            read -n 1 -rp "按任意键继续"
+            continue
+        fi
+        
+        local host_path=$(echo "$mount_input" | cut -d':' -f1)
+        local container_path=$(echo "$mount_input" | cut -d':' -f2)
+        
+        # 检查容器路径是否已存在（基于文件内容）
+        if grep -qE "(--volume|-v)[[:space:]]+[^[:space:]]+:${container_path}([[:space:]]|\\\|$)" "$config_file"; then
+            WARN "容器路径 ${container_path} 已存在挂载，这将修改原有挂载"
+            read -erp "是否继续？(y/n)：" confirm
+            if [[ ! $confirm == [Yy] ]]; then
+                continue
+            fi
+            # 删除旧的挂载 - 使用 | 作为分隔符以避免路径中/字符的问题
+            sed -i -E "s#(--volume|-v)[[:space:]]+[^[:space:]]+:${container_path}([[:space:]]|\\\|$)# #g" "$config_file"
+            # 清理多余空格
+            sed -i 's/  */ /g' "$config_file"
+        fi
+        
+        # 检查主机路径是否存在
+        if [ ! -d "$host_path" ]; then
+            WARN "主机目录 ${host_path} 不存在"
+            read -erp "是否创建该目录？(y/n)：" create_dir
+            if [[ $create_dir == [Yy] ]]; then
+                mkdir -p "$host_path"
+                INFO "目录已创建：${host_path}"
+            else
+                WARN "未创建目录，请确保容器运行前目录存在"
+            fi
+        fi
+        
+        # 在 --name 之后添加挂载
+        sed -i "s|--name=${container_name} |--name=${container_name} --volume ${host_path}:${container_path} |" "$config_file"
+        
+        INFO "已添加挂载：${host_path} -> ${container_path}"
+        read -erp "是否继续添加挂载？(y/n)：" continue_add
+        if [[ ! $continue_add == [Yy] ]]; then
+            break
+        fi
+    done
+}
+
+# 2、添加/修改环境变量
+modify_env() {
+    local config_file="$1"
+    
+    while true; do
+        clear
+        echo -e "——————————————————————————————————————— \033[1;33m添加/修改环境变量\033[0m ———————————————————————————————————————"
+        echo -e "\n"
+        echo -e "当前环境变量列表："
+        grep -oE "(--env|-e)\s+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+" "$config_file" | sed 's/^\s*//'
+        echo -e "\n"
+        echo -e "输入格式：环境变量名=环境变量值"
+        echo -e "示例：TZ=Asia/Shanghai"
+        echo -e "输入 'b' 返回上级菜单"
+        echo -e "\n"
+        
+        read -erp "请输入环境变量：" env_input
+        
+        if [[ $env_input == [Bb] ]]; then
+            break
+        fi
+        
+        # 验证输入格式
+        if [[ ! $env_input =~ ^[A-Za-z_][A-Za-z0-9_]*=.+$ ]]; then
+            ERROR "格式错误！请使用：环境变量名=环境变量值"
+            read -n 1 -rp "按任意键继续"
+            continue
+        fi
+        
+        local env_name=$(echo "$env_input" | cut -d'=' -f1)
+        local env_value=$(echo "$env_input" | cut -d'=' -f2-)
+        
+        # 检查环境变量是否已存在（基于文件内容）
+        if grep -qE "(--env|-e)\s+${env_name}=" "$config_file"; then
+            local current_value=$(grep -oE "(--env|-e)[= ]+${env_name}=[^[:space:]]+" "$config_file" | sed "s/^.*${env_name}=//" | sed 's/\\$//')
+            WARN "环境变量 ${env_name} 已存在"
+            INFO "当前值：${current_value}"
+            INFO "新值：${env_input}"
+            read -erp "是否覆盖？(y/n)：" confirm
+            if [[ ! $confirm == [Yy] ]]; then
+                continue
+            fi
+            # 删除旧的环境变量 - 使用 | 作为分隔符以避免值中/字符的问题
+            sed -i -E "s#(--env|-e)[= ]+${env_name}=[^[:space:]]*([[:space:]]|$)# #g" "$config_file"
+            # 清理多余空格
+            sed -i 's/  */ /g' "$config_file"
+        fi
+        
+        # 在 --name 之后添加环境变量
+        sed -i "s|--name=${container_name} |--name=${container_name} --env ${env_input} |" "$config_file"
+        
+        INFO "已添加环境变量：${env_input}"
+        read -erp "是否继续添加环境变量？(y/n)：" continue_add
+        if [[ ! $continue_add == [Yy] ]]; then
+            break
+        fi
+    done
+}
+
+# 3、修改网络模式/端口
+modify_network() {
+    local config_file="$1"
+    
+    clear
+    echo -e "——————————————————————————————————————— \033[1;33m修改网络模式/端口\033[0m ———————————————————————————————————————"
+    echo -e "\n"
+    
+    # 检查当前网络模式（基于文件内容）
+    local current_network="bridge"
+    if grep -qE "\s*--network=host\s*" "$config_file" || grep -qE "\s*--net=host\s*" "$config_file"; then
+        current_network="host"
+    elif grep -qE "\s*--network=|\s*--net=" "$config_file"; then
+        current_network=$(grep -oE "\s*--network=[^[:space:]]+|\s*--net=[^[:space:]]+" "$config_file" | head -n1 | cut -d'=' -f2 | sed 's/\\$//')
+    fi
+    
+    INFO "当前网络模式：${current_network}"
+    echo -e "\n"
+    echo -e "请选择网络模式："
+    echo -e "[ 1 ] host 模式"
+    echo -e "[ 2 ] bridge 模式"
+    echo -e "[ 3 ] 自定义网络"
+    echo -e "[ 0 ] 不修改，返回"
+    echo -e "\n"
+    
+    read -erp "请选择：" network_choice
+    
+    case "$network_choice" in
+        1)
+            # 删除旧的网络配置和端口映射
+            sed -i 's|--network=[^[:space:]]*||g' "$config_file"
+            sed -i 's|--net=[^[:space:]]*||g' "$config_file"
+            sed -i -E 's#(--publish|-p)[= ]+[^[:space:]]+([[:space:]]|$)# #g' "$config_file"
+            # 清理多余空格
+            sed -i 's/  */ /g' "$config_file"
+            # 添加 host 网络
+            sed -i "s|--name=${container_name} |--name=${container_name} --network=host |" "$config_file"
+            INFO "已设置为 host 网络模式"
+            read -n 1 -rp "按任意键返回"
+            ;;
+        2)
+            # 删除旧的网络配置
+            sed -i 's|--network=host||g' "$config_file"
+            sed -i 's|--net=host||g' "$config_file"
+            # 清理多余空格
+            sed -i 's/  */ /g' "$config_file"
+            
+            # 桥接模式下可以添加端口映射
+            while true; do
+                echo -e "\n"
+                INFO "当前端口映射："
+                grep -oE "(--publish|-p)\s+[0-9]+:[0-9]+" "$config_file" | sed 's/^\s*//'
+                echo -e "\n"
+                echo -e "输入格式：主机端口:容器端口"
+                echo -e "示例：8080:80"
+                echo -e "输入 'b' 返回网络模式选择"
+                echo -e "\n"
+                
+                read -erp "请输入端口映射：" port_input
+                
+                if [[ $port_input == [Bb] ]]; then
+                    break
+                fi
+                
+                # 验证输入格式
+                if [[ ! $port_input =~ ^[0-9]+:[0-9]+ ]]; then
+                    ERROR "格式错误！请使用：主机端口:容器端口"
+                    read -n 1 -rp "按任意键继续"
+                    continue
+                fi
+                
+                local host_port=$(echo "$port_input" | cut -d':' -f1)
+                local container_port=$(echo "$port_input" | cut -d':' -f2)
+                
+                # 检查主机端口是否被占用
+                if netstat -tuln 2>/dev/null | grep -q ":${host_port}\s"; then
+                    WARN "主机端口 ${host_port} 可能已被占用"
+                    read -erp "是否继续？(y/n)：" confirm
+                    if [[ ! $confirm == [Yy] ]]; then
+                        continue
+                    fi
+                fi
+                
+                # 检查容器端口是否已存在映射（基于文件内容）
+                local container_port_base=$(echo "$container_port" | cut -d'/' -f1)
+                if grep -qE "(--publish|-p)[= ]+[0-9]+:${container_port_base}" "$config_file"; then
+                    WARN "容器端口 ${container_port_base} 已存在映射"
+                    read -erp "是否覆盖？(y/n)：" confirm
+                    if [[ $confirm == [Yy] ]]; then
+                        # 删除旧的端口映射 - 使用 | 作为分隔符以避免端口/协议格式的问题
+                        sed -i -E "s#(--publish|-p)[= ]+[0-9]+:${container_port_base}[^[:space:]]*([[:space:]]|$)# #g" "$config_file"
+                        # 清理多余空格
+                        sed -i 's/  */ /g' "$config_file"
+                    else
+                        continue
+                    fi
+                fi
+                
+                # 添加端口映射
+                sed -i "s|--name=${container_name} |--name=${container_name} --publish ${port_input} |" "$config_file"
+                INFO "已添加端口映射：${port_input}"
+                
+                read -erp "是否继续添加端口？(y/n)：" continue_port
+                if [[ ! $continue_port == [Yy] ]]; then
+                    break
+                fi
+            done
+        
+            INFO "已设置为 bridge 网络模式"
+            read -n 1 -rp "按任意键返回"
+            ;;
+        3)
+            # 自定义网络模式
+            echo -e "\n"
+            INFO "当前网络配置："
+            if grep -qE "\s*(--network=|--net=)" "$config_file"; then
+                grep -oE "\s*(--network=|--net=)[^[:space:]]+" "$config_file" | sed 's/^\s*//'
+            else
+                echo "无网络配置，当前为默认bridge模式"
+            fi
+            echo -e "\n"
+            read -erp "请输入自定义网络名称（如：my-network）：" custom_network
+            
+            if [ -z "$custom_network" ]; then
+                ERROR "网络名称不能为空！"
+                read -n 1 -rp "按任意键返回"
+                return 0
+            fi
+            
+            # 删除旧的网络配置
+            sed -i 's|--network=[^[:space:]]*||g' "$config_file"
+            sed -i 's|--net=[^[:space:]]*||g' "$config_file"
+            # 清理多余空格
+            sed -i 's/  */ /g' "$config_file"
+            
+            # 添加自定义网络
+            sed -i "s|--name=${container_name} |--name=${container_name} --network=${custom_network} |" "$config_file"
+            INFO "已设置为自定义网络：${custom_network}"
+            read -n 1 -rp "按任意键返回"
+            ;;
+        0)
+            return 0
+            ;;
+        *)
+            ERROR "无效的选择！"
+            read -n 1 -rp "按任意键返回"
+            ;;
+    esac
+}
+
+# 4、添加其他额外参数
+modify_extra_params() {
+    local config_file="$1"
+    
+    while true; do
+        clear
+        echo -e "——————————————————————————————————————— \033[1;33m添加额外参数\033[0m ———————————————————————————————————————"
+        echo -e "\n"
+        echo -e "请输入完整的Docker参数"
+        echo -e "常用设备参数："
+        echo -e "  示例：--device=/dev/dri (GPU设备)"
+        echo -e "  示例：--gpus=all (所有GPU)"
+        echo -e "  示例：--device=/dev/snd (音频设备)"
+        echo -e "\n"
+        echo -e "输入 'b' 返回上级菜单"
+        echo -e "\n"
+        
+        read -erp "请输入参数：" extra_param
+        
+        if [[ $extra_param == [Bb] ]]; then
+            break
+        fi
+        
+        if [ -z "$extra_param" ]; then
+            ERROR "参数不能为空！"
+            read -n 1 -rp "按任意键继续"
+            continue
+        fi
+        
+        # 检查参数是否已存在（基于文件内容）
+        local param_name=$(echo "$extra_param" | cut -d'=' -f1)
+        if grep -qF "$param_name" "$config_file"; then
+            WARN "参数 ${param_name} 可能已存在"
+            read -erp "是否继续添加？(y/n)：" confirm
+            if [[ ! $confirm == [Yy] ]]; then
+                continue
+            fi
+        fi
+        
+        # 检查网络相关参数冲突
+        if [[ "$extra_param" == --network=host || "$extra_param" == --net=host ]]; then
+            if grep -qE "(--publish|-p)[= ]+" "$config_file"; then
+                WARN "当前配置包含端口映射(-p)，但添加--network=host后端口映射将无效"
+                read -erp "是否继续？(y/n)：" confirm
+                if [[ ! $confirm == [Yy] ]]; then
+                    continue
+                fi
+            fi
+        elif [[ "$extra_param" == -p* || "$extra_param" == --publish* ]]; then
+            if grep -qE "\s*(--network=host|--net=host)\s*" "$config_file"; then
+                WARN "当前配置为host网络模式，端口映射可能无法正常工作"
+                read -erp "是否继续？(y/n)：" confirm
+                if [[ ! $confirm == [Yy] ]]; then
+                    continue
+                fi
+            fi
+        fi
+        
+        # 添加参数
+        sed -i "s|--name=${container_name} |--name=${container_name} ${extra_param} |" "$config_file"
+        
+        INFO "已添加参数：${extra_param}"
+        read -erp "是否继续添加参数？(y/n)：" continue_add
+        if [[ ! $continue_add == [Yy] ]]; then
+            break
+        fi
+    done
+}
+
+# 0、确认并重建容器
+rebuild_container() {
+    local container_name="$1"
+    local config_file="$2"
+    
+    clear
+    echo -e "——————————————————————————————————————— \033[1;33m确认重建容器\033[0m ———————————————————————————————————————"
+    echo -e "\n"
+    INFO "容器名称：${container_name}"
+    echo -e "\n"
+    echo -e "\033[1;33m修改后的配置预览：\033[0m"
+    echo -e "\033[0;36m"
+    cat "$config_file"
+    echo -e "\033[0m"
+    echo -e "\n"
+    
+    # 显示变更摘要
+    echo -e "\033[1;33m配置变更摘要：\033[0m"
+    local volume_count=$(grep -oE "(--volume|-v)[= ]+" "$config_file" | wc -l)
+    local env_count=$(grep -oE "(--env|-e)[= ]+" "$config_file" | wc -l)
+    local port_count=$(grep -oE "(--publish|-p)[= ]+" "$config_file" | wc -l)
+    local network=$(grep -oE "(--network|--net)=[^[:space:]]+" "$config_file" | head -n1 | cut -d'=' -f2)
+    
+    echo -e "  挂载卷数量: $volume_count"
+    echo -e "  环境变量数量: $env_count"
+    echo -e "  端口映射数量: $port_count"
+    echo -e "  网络模式: ${network:-default}"
+    echo -e "\n"
+    
+    WARN "即将重建容器，此操作将："
+    echo -e "  1. 停止并删除现有容器"
+    echo -e "  2. 使用新配置创建容器"
+    echo -e "  3. 旧容器将备份为 ${container_name}_old"
+    echo -e "\n"
+    
+    read -erp "确认重建容器？(yes/no)：" final_confirm
+    
+    if [[ ! $final_confirm == "yes" ]]; then
+        INFO "已取消重建"
+        read -n 1 -rp "按任意键返回"
+        return 1
+    fi
+    
+    # 修改配置文件中的容器名
+    sed -i "s|--name=${container_name} |--name=${container_name}_new |" "$config_file"
+    
+    # 获取容器状态
+    local was_running=false
+    if [ "$(docker inspect -f '{{.State.Running}}' "${container_name}" 2>/dev/null)" == "true" ]; then
+        was_running=true
+    fi
+    
+    INFO "停止容器 ${container_name}..."
+    docker stop "${container_name}" > /dev/null 2>&1
+    
+    INFO "重命名旧容器为 ${container_name}_old..."
+    docker rename "${container_name}" "${container_name}_old" > /dev/null 2>&1
+    
+    INFO "创建新容器..."
+    if bash "${config_file}"; then
+        docker rename "${container_name}_new" "${container_name}" > /dev/null 2>&1
+        
+        if [ "$was_running" == "true" ]; then
+            INFO "启动容器 ${container_name}..."
+            docker start "${container_name}" > /dev/null 2>&1
+        fi
+        
+        INFO "容器重建成功！"
+        INFO "旧容器已保留为：${container_name}_old"
+        echo -e "\n"
+        read -erp "是否删除旧容器？(y/n)：" delete_old
+        if [[ $delete_old == [Yy] ]]; then
+            docker rm -f "${container_name}_old" > /dev/null 2>&1
+            INFO "旧容器已删除"
+        fi
+    else
+        ERROR "创建新容器失败！正在回滚..."
+        docker rm -f "${container_name}_new" > /dev/null 2>&1
+        docker rename "${container_name}_old" "${container_name}" > /dev/null 2>&1
+        
+        if [ "$was_running" == "true" ]; then
+            docker start "${container_name}" > /dev/null 2>&1
+        fi
+        
+        ERROR "回滚完成，容器已恢复原状态"
+    fi
+    
+    read -n 1 -rp "按任意键返回主菜单"
+}
+
 export -f INFO ERROR WARN \
     check_path check_port check_space check_root check_env check_loop_support check_qnap \
     setup_status command_exists \
@@ -2287,4 +2849,5 @@ export -f INFO ERROR WARN \
     xy_media_reunzip \
     emby_close_6908_port get_docker0_ip wait_emby_start wait_gbox_start \
     cleanup_invalid_loops get_loop_from_state_file update_loop_state_file check_loop_binding smart_bind_loop_device \
-    check_proxy_health setup_gh_proxy dd_xitong
+    check_proxy_health setup_gh_proxy dd_xitong \
+    modify_container_interactive modify_config_menu modify_mount modify_env modify_network modify_extra_params rebuild_container

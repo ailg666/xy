@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # shellcheck shell=bash
 # shellcheck disable=SC2086
 
@@ -626,9 +626,10 @@ function user_emby_fast() {
     echo -e "\033[1;35m请输入您的小雅emby/jellyfin的config镜像存放路径（请确保大于${space_need_config}G剩余空间！与媒体库镜像一致可直接回车！）:\033[0m"
     read -r image_dir_config
     image_dir_config=${image_dir_config:-${image_dir}}
-    echo -e "\033[1;35m请输入镜像下载后需要扩容的空间（单位：GB，默认5G可直接回车，请确保大于${space_need_config}G剩余空间！）:\033[0m"
+    echo -e "\033[1;35m请输入镜像下载后需要扩容的空间（单位：GB，默认10G可直接回车，请确保大于${space_need_config}G剩余空间！）:\033[0m"
     read -r expand_size_config
-    expand_size_config=${expand_size_config:-5}
+    expand_size_config=${expand_size_config:-10}
+    # 先询问用户 115 网盘空间是否足够
     read -p "使用115下载镜像请确保cookie正常且网盘剩余空间不低于100G，（按Y/y 确认，按任意键走阿里云盘下载！）: " ok_115
     check_path $image_dir
     check_path $image_dir_config
@@ -824,15 +825,21 @@ function user_emby_fast() {
     if ! [[ -f /etc/nsswitch.conf ]]; then
         echo -e "hosts:\tfiles dns\nnetworks:\tfiles" > /etc/nsswitch.conf
     fi
-
-    rm -f "$image_dir/${init}" > /dev/null 2>&1
-    docker cp "${docker_name}":/var/lib/${init} "$image_dir/"
-    chmod 777 "$image_dir/${init}"
-
-    config_mount_params=""
-    if [ -f "$image_dir_config/$emby_img_config" ]; then
-        config_mount_params="-v $image_dir_config/$emby_img_config:/config.img"
+    #get_emby_image
+    if [ -f "$image_dir/${init}" ]; then
+        rm -f "$image_dir/${init}"
+        docker cp "${docker_name}":/var/lib/${init} "$image_dir/"
+        chmod 777 "$image_dir/${init}"
+    else
+        docker cp "${docker_name}":/var/lib/${init} "$image_dir/"
+        chmod 777 "$image_dir/${init}"
     fi
+    #if ${del_emby}; then
+        # 构建配置镜像挂载参数
+        config_mount_params=""
+        if [ -f "$image_dir_config/$emby_img_config" ]; then
+            config_mount_params="-v $image_dir_config/$emby_img_config:/config.img"
+        fi
 
     if [[ "${emby_image}" =~ emby ]]; then
         ailg_mount_params="-v $image_dir:/ailg"
