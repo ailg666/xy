@@ -1543,22 +1543,26 @@ emby_close_6908_port() {
     local runlike_binary="runlike-${os_type}-${arch}"
     local runlike_url="https://ailg.ggbond.org/${runlike_binary}"
     
-    if ! curl -L -o "/tmp/${runlike_binary}" "${runlike_url}"; then
+    # 使用 /etc/.gbox 目录，避免 /tmp 目录权限问题
+    local temp_dir="/etc/.gbox"
+    [ ! -d "$temp_dir" ] && mkdir -p "$temp_dir"
+    
+    if ! curl -sSLf -o "$temp_dir/${runlike_binary}" "${runlike_url}"; then
         ERROR "下载 runlike 失败！"
         return 1
     fi
     
-    chmod +x "/tmp/${runlike_binary}"
+    chmod +x "$temp_dir/${runlike_binary}"
     
     INFO "获取 ${emby_name} 容器信息中..."
-    if ! "/tmp/${runlike_binary}" -p "${emby_name}" > "/tmp/container_update_${emby_name}"; then
+    if ! "$temp_dir/${runlike_binary}" -p --vid "${emby_name}" > "/tmp/container_update_${emby_name}"; then
         ERROR "提取容器配置失败！"
-        rm -f "/tmp/${runlike_binary}"
+        rm -f "$temp_dir/${runlike_binary}"
         return 1
     fi
     
     # 清理临时二进制文件
-    rm -f "/tmp/${runlike_binary}"
+    rm -f "$temp_dir/${runlike_binary}"
     
     INFO "更改 Emby 为 only_for_emby 模式并取消端口映射中..."
     if grep -q 'network=host' "/tmp/container_update_${emby_name}"; then
@@ -2379,25 +2383,29 @@ modify_container_interactive() {
     local runlike_binary="runlike-${os_type}-${arch}"
     local runlike_url="https://ailg.ggbond.org/${runlike_binary}"
     
-    if ! curl -L -o "/tmp/${runlike_binary}" "${runlike_url}"; then
+    # 使用 /etc/.gbox 目录，避免 /tmp 目录权限问题
+    local temp_dir="/etc/.gbox"
+    [ ! -d "$temp_dir" ] && mkdir -p "$temp_dir"
+    
+    if ! curl -sSLf -o "$temp_dir/${runlike_binary}" "${runlike_url}"; then
         ERROR "下载 runlike 失败！"
         rm -f "${runlike_file}"
         read -n 1 -rp "按任意键返回"
         return 1
     fi
     
-    chmod +x "/tmp/${runlike_binary}"
+    chmod +x "$temp_dir/${runlike_binary}"
     
-    if ! "/tmp/${runlike_binary}" -p "${selected_container}" > "${runlike_file}"; then
+    if ! "$temp_dir/${runlike_binary}" -p --vid "${selected_container}" > "${runlike_file}"; then
         ERROR "提取容器配置失败！"
         rm -f "${runlike_file}"
-        rm -f "/tmp/${runlike_binary}"
+        rm -f "$temp_dir/${runlike_binary}"
         read -n 1 -rp "按任意键返回"
         return 1
     fi
     
     # 清理临时二进制文件
-    rm -f "/tmp/${runlike_binary}"
+    rm -f "$temp_dir/${runlike_binary}"
     
     INFO "配置已提取到：${runlike_file}"
     
