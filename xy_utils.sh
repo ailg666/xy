@@ -1601,6 +1601,8 @@ emby_close_6908_port() {
         return 1
     fi
     
+    # remove any attach flags produced by runlike (e.g. '-a STDOUT') because docker rejects combining -a and -d
+    sed -r -i 's/ -a [^[:space:]]+//g; s/ --attach [^[:space:]]+//g' "/tmp/container_update_${emby_name}"
     if bash "/tmp/container_update_${emby_name}"; then
         rm -f "/tmp/container_update_${emby_name}"
         wait_emby_start "$emby_name"
