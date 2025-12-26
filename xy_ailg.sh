@@ -1463,10 +1463,11 @@ mount_img() {
     search_img="emby/embyserver|amilys/embyserver|nyanmisaka/jellyfin|jellyfin/jellyfin"
     check_qnap
     get_emby_status > /dev/null
+    curl -sSLf -o /usr/bin/mount_ailg "https://ailg.ggbond.org/mount_ailg"
     if [ ! -f /usr/bin/mount_ailg ]; then
         docker cp g-box:/var/lib/mount_ailg "/usr/bin/mount_ailg"
-        chmod 777 /usr/bin/mount_ailg
     fi
+    chmod 777 /usr/bin/mount_ailg
     if [ ${#emby_list[@]} -ne 0 ]; then
         for entry in "${emby_list[@]}"; do
             op_emby=$(echo "$entry" | cut -d':' -f1)
@@ -1581,6 +1582,11 @@ mount_img() {
                     
                     if [ -n "$img_loop" ] && mount "$img_loop" ${img_mount}; then
                         INFO "已将${Yellow}${img_path}${NC}挂载到${Yellow}${img_mount}${NC}目录！" && WARN "如您想操作小雅config数据的同步或更新，请先手动关闭${Yellow}${emby_name}${NC}容器！"
+                        read -erp "是否将些img镜像设置为开机自动挂载？[y/n] " auto_mount
+                        if [[ "$auto_mount" == [yY] ]]; then
+                            auto_mount_ailg "${img_path}"
+                            INFO "已将${Yellow}${img_path}${NC}设置为开机自动挂载！"
+                        fi
                     else
                         ERROR "挂载失败，${Yellow}${img_mount}${NC}挂载目录非空或已经挂载，请重启设备后重试！" && return 1
                     fi
@@ -1590,6 +1596,11 @@ mount_img() {
                     
                     if smart_mount_img "${img_path}" "${img_mount}"; then
                         INFO "已将${img_path}挂载到${img_mount}目录！"
+                        read -erp "是否将些img镜像设置为开机自动挂载？[y/n] " auto_mount
+                        if [[ "$auto_mount" == [yY] ]]; then
+                            auto_mount_ailg "${img_path}"
+                            INFO "已将${Yellow}${img_path}${NC}设置为开机自动挂载！"
+                        fi
                     else
                         ERROR "挂载失败，请重启设备后重试！"
                         return 1
@@ -1623,6 +1634,48 @@ mount_img() {
             ERROR "挂载失败，请重启设备后重试！"
             return 1
         fi
+    fi
+}
+
+auto_mount_ailg() {
+    if [ -f /etc/synoinfo.conf ];then
+		OSNAME='synology'
+    elif [ -f /etc/unraid-version ];then
+        OSNAME='unraid'
+    elif command -v crontab >/dev/null 2>&1 && ps -ef | grep '[c]rond' >/dev/null 2>&1; then
+        OSNAME='other'
+    else
+        echo -e "\033[1;33m您的系统不支持crontab计划任务！\033[0m"
+        echo -e "\033[1;33m将尝试在/etc/rc.local中添加启动命令！\033[0m"
+    fi
+    COMMAND="/usr/bin/mount_ailg \"$1\""
+    if [[ $OSNAME == "synology" ]];then
+        if ! grep -qF -- "$COMMAND" /etc/rc.local; then
+            cp -f /etc/rc.local /etc/rc.local.bak
+            sed -i '/mount_ailg/d' /etc/rc.local
+            if grep -q 'exit 0' /etc/rc.local; then
+                sed -i "/exit 0/i\/usr/bin/mount_ailg \"$1\"" /etc/rc.local
+            else
+                echo -e "/usr/bin/mount_ailg \"$1\"" >> /etc/rc.local
+            fi
+        fi
+    elif [[ $OSNAME == "unraid" ]];then
+        if ! grep -qF -- "$COMMAND" /boot/config/go; then
+            echo -e "/usr/bin/mount_ailg \"$1\"" >> /boot/config/go
+        fi
+    elif [[ $OSNAME == "other" ]];then
+        CRON="@reboot /usr/bin/mount_ailg \"$1\""
+        crontab -l | grep -v mount_ailg > /tmp/cronjob.tmp
+        echo -e "${CRON}" >> /tmp/cronjob.tmp
+        crontab /tmp/cronjob.tmp
+    else
+        if grep -qF -- "$img_path" /etc/rc.local; then
+            INFO "已存在自动挂载配置，跳过添加。"
+        else
+            echo -e "\n# 自动挂载配置" >> /etc/rc.local
+            echo -e "/usr/bin/mount_ailg \"$1\"" >> /etc/rc.local
+        fi
+        echo -e "已在/etc/rc.local为您配置开机自启，如果失败请将以下命令自行配置开机启动：\033[1;33m/usr/bin/mount_ailg \"$1\"\033[0m"
     fi
 }
 
