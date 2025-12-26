@@ -2453,7 +2453,7 @@ modify_config_menu() {
                 ;;
             0)
                 rebuild_container "$container_name" "$config_file"
-                return 0
+                # return 0
                 ;;
             [Bb])
                 INFO "已取消修改"
