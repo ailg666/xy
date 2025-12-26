@@ -2515,7 +2515,8 @@ modify_mount() {
         fi
         
         # 验证输入格式
-        if [[ ! $mount_input =~ ^/[^:]+:/[^:]+$ ]]; then
+        pattern="^[\"']?/[^:\"']+[\"']?:[\"']?/[^:\"']+[\"']?$"
+        if [[ ! $mount_input =~ $pattern ]]; then
             ERROR "格式错误！请使用：宿主机绝对路径:容器绝对路径"
             read -n 1 -rp "按任意键继续"
             continue
@@ -2657,19 +2658,19 @@ modify_network() {
     
     case "$network_choice" in
         1)
-            sed -i 's|--network=[^[:space:]]*||g' "$config_file"
-            sed -i 's|--net=[^[:space:]]*||g' "$config_file"
-            sed -i -E 's#(--publish|-p)[= ]+[^[:space:]]+([[:space:]]|$)# #g' "$config_file"
+            sed -i -E '/--net(work)?=[^[:space:]]*/d' "$config_file"
+            sed -i -E '\#(--publish|-p)[= ]+[^[:space:]]+#d' "$config_file"
+            sed -i -E '/--ip=[^[:space:]]*/d' "$config_file"
             sed -i 's/  */ /g' "$config_file"
             sed -i "s|--name=${container_name} |--name=${container_name} --network=host |" "$config_file"
             INFO "已设置为 host 网络模式"
             read -n 1 -rp "按任意键返回"
             ;;
         2)
-            sed -i 's|--network=host||g' "$config_file"
-            sed -i 's|--net=host||g' "$config_file"
+            sed -i -E '/--net(work)?=[^[:space:]]*/d' "$config_file"
+            sed -i -E '\#(--publish|-p)[= ]+[^[:space:]]+#d' "$config_file"
+            sed -i -E '/--ip=[^[:space:]]*/d' "$config_file"
             sed -i 's/  */ /g' "$config_file"
-            
             echo -e "\n"
             INFO "当前端口映射："
             grep -oE "(--publish|-p)[= ]+(\"|')?[0-9]+:[0-9]+(\"|')?[^[:space:]]*" "$config_file" | sed 's/^\s*//'
@@ -2770,13 +2771,77 @@ modify_network() {
                 read -n 1 -rp "按任意键返回"
                 return 0
             fi
-            
-            sed -i 's|--network=[^[:space:]]*||g' "$config_file"
-            sed -i 's|--net=[^[:space:]]*||g' "$config_file"
+
+            read -erp "请输入自定义网络IP（如：10.250.0.100），自动分配可直接按回车：" custom_ip
+
+            # 验证用户输入的 IP 是否为合法 IPv4 且属于私有网段（10/8, 172.16/12, 192.168/16）
+            validate_private_ip() {
+                local ip="$1"
+                # 允许空值（表示自动分配）
+                if [ -z "$ip" ]; then
+                    return 0
+                fi
+
+                # 基本格式检查：四段数字，每段 0-255
+                if ! printf "%s" "$ip" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
+                    return 1
+                fi
+
+                IFS='.' read -r o1 o2 o3 o4 <<EOF
+$ip
+EOF
+                for o in "$o1" "$o2" "$o3" "$o4"; do
+                    if [ "$o" -lt 0 ] 2>/dev/null || [ "$o" -gt 255 ] 2>/dev/null; then
+                        return 1
+                    fi
+                done
+
+                # 私有网段检查
+                case "$o1" in
+                    10)
+                        return 0
+                        ;;
+                    172)
+                        if [ "$o2" -ge 16 ] 2>/dev/null && [ "$o2" -le 31 ] 2>/dev/null; then
+                            return 0
+                        else
+                            return 1
+                        fi
+                        ;;
+                    192)
+                        if [ "$o2" -eq 168 ] 2>/dev/null; then
+                            return 0
+                        else
+                            return 1
+                        fi
+                        ;;
+                    *)
+                        return 1
+                        ;;
+                esac
+            }
+
+            if [ -n "$custom_ip" ]; then
+                if ! validate_private_ip "$custom_ip"; then
+                    ERROR "输入的 IP 不合法或不属于局域网私有网段，请输入 10.x.x.x、172.16.x.x-172.31.x.x 或 192.168.x.x 的地址，或留空自动分配。"
+                    read -n 1 -rp "按任意键返回"
+                    return 0
+                fi
+            fi
+
+            sed -i -E '/--net(work)?=[^[:space:]]*/d' "$config_file"
+            sed -i -E '\#(--publish|-p)[= ]+[^[:space:]]+#d' "$config_file"
+            sed -i -E '/--ip=[^[:space:]]*/d' "$config_file"
             sed -i 's/  */ /g' "$config_file"
+
+            if [ -n "$custom_ip" ]; then
+                sed -i "s|--name=${container_name} |--name=${container_name} --network=${custom_network} --ip=${custom_ip} |" "$config_file"
+                INFO "已设置为自定义网络：${custom_network}，IP：${custom_ip}"
+            else
+                sed -i "s|--name=${container_name} |--name=${container_name} --network=${custom_network} |" "$config_file"
+                INFO "已设置为自定义网络：${custom_network}，IP：自动分配"
+            fi
             
-            sed -i "s|--name=${container_name} |--name=${container_name} --network=${custom_network} |" "$config_file"
-            INFO "已设置为自定义网络：${custom_network}"
             read -n 1 -rp "按任意键返回"
             ;;
         0)
