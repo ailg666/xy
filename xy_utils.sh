@@ -2406,15 +2406,13 @@ modify_container_interactive() {
         return 1
     fi
     
-    # 清理临时二进制文件
-    rm -f "$temp_dir/${runlike_binary}"
-    
     INFO "配置已提取到：${runlike_file}"
     
     # 进入配置修改菜单
     modify_config_menu "$selected_container" "$runlike_file"
     
     rm -f "${runlike_file}"
+    rm -f "$temp_dir/${runlike_binary}"
 }
 
 # 配置修改菜单
