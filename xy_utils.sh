@@ -2387,11 +2387,13 @@ modify_container_interactive() {
     local temp_dir="/etc/.gbox"
     [ ! -d "$temp_dir" ] && mkdir -p "$temp_dir"
     
-    if ! curl -sSLf -o "$temp_dir/${runlike_binary}" "${runlike_url}"; then
-        ERROR "下载 runlike 失败！"
-        rm -f "${runlike_file}"
-        read -n 1 -rp "按任意键返回"
-        return 1
+    if [ ! -f "$temp_dir/${runlike_binary}" ]; then
+        if ! curl -sSLf -o "$temp_dir/${runlike_binary}" "${runlike_url}"; then
+            ERROR "下载 runlike 失败，请检查网络后重试！"
+            rm -f "${runlike_file}"
+            read -n 1 -rp "按任意键返回"
+            return 1
+        fi
     fi
     
     chmod +x "$temp_dir/${runlike_binary}"
