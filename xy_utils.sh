@@ -2666,11 +2666,7 @@ modify_network() {
             INFO "已设置为 host 网络模式"
             read -n 1 -rp "按任意键返回"
             ;;
-        2)
-            sed -i -E '/--net(work)?=[^[:space:]]*/d' "$config_file"
-            sed -i -E '\#(--publish|-p)[= ]+[^[:space:]]+#d' "$config_file"
-            sed -i -E '/--ip=[^[:space:]]*/d' "$config_file"
-            sed -i 's/  */ /g' "$config_file"
+        2)     
             echo -e "\n"
             INFO "当前端口映射："
             grep -oE "(--publish|-p)[= ]+(\"|')?[0-9]+:[0-9]+(\"|')?[^[:space:]]*" "$config_file" | sed 's/^\s*//'
@@ -2747,6 +2743,9 @@ modify_network() {
                     
                     read -erp "是否继续添加端口？(y/n)：" continue_port
                     if [[ ! $continue_port == [Yy] ]]; then
+                        sed -i -E '/--net(work)?=[^[:space:]]*/d' "$config_file"
+                        sed -i -E '/--ip=[^[:space:]]*/d' "$config_file"
+                        sed -i 's/  */ /g' "$config_file"
                         break
                     fi
                 done
@@ -2829,10 +2828,7 @@ EOF
                 fi
             fi
 
-            sed -i -E '/--net(work)?=[^[:space:]]*/d' "$config_file"
-            sed -i -E '\#(--publish|-p)[= ]+[^[:space:]]+#d' "$config_file"
-            sed -i -E '/--ip=[^[:space:]]*/d' "$config_file"
-            sed -i 's/  */ /g' "$config_file"
+            sed -i -E '/--net(work)?=host/d' "$config_file"
 
             if [ -n "$custom_ip" ]; then
                 sed -i "s|--name=${container_name} |--name=${container_name} --network=${custom_network} --ip=${custom_ip} |" "$config_file"
@@ -2841,6 +2837,79 @@ EOF
                 sed -i "s|--name=${container_name} |--name=${container_name} --network=${custom_network} |" "$config_file"
                 INFO "已设置为自定义网络：${custom_network}，IP：自动分配"
             fi
+
+            while true; do
+                echo -e "\n"
+                echo -e "添加/修改格式：主机端口:容器端口 或 主机端口:容器端口/tcp 或 主机端口:容器端口/udp"
+                echo -e "删除格式：-d 主机端口:容器端口 或 主机端口:容器端口/tcp 或 主机端口:容器端口/udp"
+                echo -e "示例：8080:80 或 8080:80/tcp"
+                echo -e "示例(删除)：-d 8080:80"
+                echo -e "输入 'b' 完成端口配置"
+                read -erp "请输入端口映射：" port_input
+                
+                if [[ $port_input == [Bb] ]]; then
+                    break
+                fi
+
+                # 删除模式
+                if [[ $port_input == -d* ]]; then
+                    local del_input=${port_input#-d }
+                    del_input=${del_input//\"/}
+                    del_input=${del_input//\'/}
+                    
+                    local del_host_port=$(echo "$del_input" | cut -d':' -f1)
+                    local del_container_port=$(echo "$del_input" | cut -d':' -f2)
+                    
+                    # 检查是否存在
+                    if grep -qE "(--publish|-p)[= ]+(\"|')?${del_host_port}:${del_container_port}(\"|')?" "$config_file"; then
+                        sed -i -E "\#(--publish|-p)[= ]+(\"|')?${del_host_port}:${del_container_port}(\"|')?[^[:space:]]*#d" "$config_file"
+                        sed -i 's/  */ /g' "$config_file"
+                        sed -i '/^[[:space:]]*\\*$/d' "$config_file"
+                        INFO "已删除端口映射：${del_input}"
+                    else
+                        WARN "未找到匹配的端口映射：${del_input}"
+                    fi
+                    
+                    continue
+                fi
+                
+                if [[ ! $port_input =~ ^[0-9]+:[0-9]+(/tcp|/udp)?$ ]]; then
+                    ERROR "格式错误！"
+                    continue
+                fi
+                
+                local host_port=$(echo "$port_input" | cut -d':' -f1)
+                local container_port=$(echo "$port_input" | cut -d':' -f2)
+                
+                if netstat -tuln 2>/dev/null | grep -q ":${host_port}\s"; then
+                    WARN "主机端口 ${host_port} 可能已被占用"
+                    read -erp "是否继续？(y/n)：" confirm
+                    if [[ ! $confirm == [Yy] ]]; then
+                        continue
+                    fi
+                fi
+                
+                local container_port_base=$(echo "$container_port" | cut -d'/' -f1)
+                if grep -qE "(--publish|-p)[= ]+(\"|')?[0-9]+:${container_port_base}(\"|')?" "$config_file"; then
+                    WARN "容器端口 ${container_port_base} 已存在映射"
+                    read -erp "是否覆盖？(y/n)：" confirm
+                    if [[ $confirm == [Yy] ]]; then
+                        sed -i -E "\#(--publish|-p)[= ]+(\"|')?[0-9]+:${container_port_base}(\"|')?[^[:space:]]*#d" "$config_file"
+                        sed -i 's/  */ /g' "$config_file"
+                        sed -i '/^[[:space:]]*\\*$/d' "$config_file"
+                    else
+                        continue
+                    fi
+                fi
+                
+                sed -i "s|--name=${container_name} |--name=${container_name} --publish ${port_input} |" "$config_file"
+                INFO "已添加端口映射：${port_input}"
+                
+                read -erp "是否继续添加端口？(y/n)：" continue_port
+                if [[ ! $continue_port == [Yy] ]]; then
+                    break
+                fi
+            done
             
             read -n 1 -rp "按任意键返回"
             ;;
