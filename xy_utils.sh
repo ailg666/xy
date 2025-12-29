@@ -2828,7 +2828,9 @@ EOF
                 fi
             fi
 
-            sed -i -E '/--net(work)?=host/d' "$config_file"
+            sed -i -E '/--net(work)?=[^[:space:]]*/d' "$config_file"
+            sed -i -E '/--ip=[^[:space:]]*/d' "$config_file"
+            sed -i 's/  */ /g' "$config_file"
 
             if [ -n "$custom_ip" ]; then
                 sed -i "s|--name=${container_name} |--name=${container_name} --network=${custom_network} --ip=${custom_ip} |" "$config_file"
