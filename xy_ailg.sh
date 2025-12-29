@@ -3330,6 +3330,181 @@ temp_gbox() {
     [ $? -eq 0 ] && INFO "G-Box容器用临时镜像成功安装/更新，但下次重启仍会更新标准版镜像，可关闭重启自动更新功能，确认网络可正常更新后再打开！" || ERROR "G-Box容器安装/更新失败，程序退出！"
 }
 
+function temp_lgkp() {
+    # 检查是否已安装g-box
+    docker_name="$(docker ps -a | grep -E 'ailg/g-box' | awk '{print $NF}' | head -n1)"
+    if [ -z "${docker_name}" ]; then
+        WARN "您未安装G-Box容器，是否立即安装？（Y/N）  " && read -r -n 1 get_install
+        case $get_install in
+        [Yy]*)
+            user_gbox
+            exit 0
+            ;;
+        *) exit 0 ;;
+        esac
+    fi
+    
+    # 确认G-Box已安装后，提取docker_address
+    docker_address=$(docker exec g-box bash -c "head -n1 /data/docker_address.txt")
+    
+    # 执行curl操作验证115 cookie是否正常
+    INFO "正在验证G-Box和115 cookie状态..."
+    remote_size=$(curl -sL -r 0-0 -D - -o /dev/null --max-time 10 "$docker_address/d/ailg_jf/115/gbox_intro.mp4" | grep -i "Content-Range" | cut -d'/' -f2 | tr -d '\r')
+    
+    if [[ -z "$remote_size" ]] || [[ "$remote_size" -ne 17675105 ]]; then
+        ERROR "G-Box或115 cookie验证失败，remote_size: $remote_size，期望值: 17675105，请检查G-Box和115配置后重试！"
+        exit 1
+    fi
+    
+    INFO "G-Box和115 cookie验证成功！"
+    
+    # 检查是否已安装老G的速装小雅emby
+    emby_installed=false
+    emby_list=()
+    emby_order=()
+
+    if command -v mktemp > /dev/null; then
+        temp_file=$(mktemp)
+    else
+        temp_file="/tmp/tmp_img"
+    fi
+    docker ps -a | grep -E "emby/embyserver|amilys/embyserver" | awk '{print $1}' > "$temp_file"
+
+    local container_name  # 声明为局部变量
+    local image_name      # 声明为局部变量
+    while read -r container_id; do
+        if docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id | grep -qE "/xiaoya$ /media|\.img /media\.img"; then
+            # 检查镜像名是否包含emby
+            image_name=$(docker inspect --format '{{.Config.Image}}' "$container_id")
+            if [[ "$image_name" == *"emby"* ]]; then
+                container_name=$(docker ps -a --format '{{.Names}}' --filter "id=$container_id")
+                
+                # 获取所有挂载信息
+                mount_info=$(docker inspect --format '{{ range .Mounts }}{{ println .Source .Destination }}{{ end }}' $container_id)
+                
+                # 分别提取 media.img 的主机路径
+                host_path=$(echo "$mount_info" | grep "\.img /media\.img$" | awk '{print $1}')
+                
+                # 如果没有找到 .img 文件，则查找 /xiaoya 挂载
+                if [ -z "$host_path" ]; then
+                    host_path=$(echo "$mount_info" | grep "/xiaoya$ /media$" | awk '{print $1}')
+                fi
+                
+                # 构建存储结构
+                if [ -n "$host_path" ]; then
+                    emby_list+=("$container_name:$host_path:")
+                    emby_order+=("$container_name")
+                    emby_installed=true
+                fi
+            fi
+        fi
+    done < "$temp_file"
+
+    rm "$temp_file"
+
+    # 如果没有安装速装emby，引导安装
+    if [ "$emby_installed" = false ]; then
+        WARN "您未安装老G速装小雅emby，是否立即安装？（Y/N）  " && read -r -n 1 get_emby_install
+        case $get_emby_install in
+        [Yy]*)
+            user_emby_fast
+            exit 0
+            ;;
+        *) exit 0 ;;
+        esac
+    fi
+    
+    # 确认已安装emby后，获取默认安装路径
+    default_media_dir=""
+    if [ ${#emby_list[@]} -ne 0 ]; then
+        # 获取第一个emby容器的媒体路径作为默认值
+        entry=${emby_list[0]}
+        container_name=$(echo "$entry" | cut -d':' -f1)
+        host_path=$(echo "$entry" | cut -d':' -f2)
+        if [ -n "$host_path" ]; then
+            default_media_dir=$(dirname "$host_path")
+        fi
+    fi
+    
+    # 与用户交互获取媒体库安装目录
+    if [ -n "$default_media_dir" ]; then
+        read -erp "请输入老G看片资源安装目录（保持默认直接回车：$default_media_dir）：" media_dir
+        media_dir=${media_dir:-$default_media_dir}
+    else
+        read -erp "请输入老G看片资源安装目录：" media_dir
+    fi
+    
+    check_path $media_dir
+    
+    INFO "开始下载老G看片资源..."
+    download_success=false
+    for attempt in {1..3}; do
+        INFO "第 ${attempt} 次尝试下载老G看片资源..."
+        
+        # 使用docker运行aria2c下载
+        if docker run -i \
+            --security-opt seccomp=unconfined \
+            --rm \
+            --net=host \
+            -v ${media_dir}:/media \
+            -v /tmp:/download \
+            --workdir=/download \
+            -e LANG=C.UTF-8 \
+            ailg/ggbond:latest \
+            aria2c -o "老G看片.mp4" --continue=true -x6 --conditional-get=true --allow-overwrite=true "${docker_address}/d/ailg_jf/115/emby/老G看片.mp4"; then
+            
+            local_size=$(du -b /tmp/老G看片.mp4 | cut -f1)
+            remote_size_check=$(curl -sL -r 0-0 -D - -o /dev/null --max-time 10 "${docker_address}/d/ailg_jf/115/emby/老G看片.mp4" | grep -i "Content-Range" | cut -d'/' -f2 | tr -d '\r')
+            
+            if [[ -f /tmp/老G看片.mp4.aria2 ]] || [[ $remote_size_check -ne "$local_size" ]]; then
+                WARN "第 ${attempt} 次下载老G看片资源不完整，将重新下载！"
+                
+                if [[ $attempt -eq 3 ]]; then
+                    ERROR "三次尝试后老G看片资源依然下载不完整，请检查网络后重新运行脚本！"
+                    exit 1
+                fi
+            else
+                INFO "老G看片资源下载成功，开始解压..."
+                download_success=true
+                break
+            fi
+        else
+            WARN "第 ${attempt} 次下载失败，将重新尝试！"
+            
+            if [[ $attempt -eq 3 ]]; then
+                ERROR "三次尝试后下载都失败，请检查网络后重新运行脚本！"
+                exit 1
+            fi
+        fi
+    done
+    
+    if $download_success; then
+        docker run -i \
+            --security-opt seccomp=unconfined \
+            --rm \
+            --net=host \
+            -v ${media_dir}:/media \
+            -v /tmp:/download \
+            --workdir=/download \
+            -e LANG=C.UTF-8 \
+            ailg/ggbond:latest \
+            bash -c "7z x -aoa -bb1 -mmt=16 /download/老G看片.mp4 -o/media/ && chmod -R 777 /media/老G看片"
+        
+        if [ $? -eq 0 ]; then
+            INFO "${Green}老G看片资源安装成功！${NC}"
+            INFO "资源文件已解压到${Blue}${media_dir}/老G看片${NC}目录"
+            INFO "请在Emby/Jellyfin中扫描老G看片目录完成入库，如没有相关媒体库，请自行添加，媒体库命名为老G电影或老G剧场，类型选电影或电视剧，挂载目录为${Blue}/ailg/老G看片/电影或/ailg/老G看片/电视剧${NC}"
+            
+            rm -f /tmp/老G看片.mp4
+            
+            INFO "任务完成，返回主菜单..."
+            main_menu
+        else
+            ERROR "老G看片资源解压失败，请检查磁盘空间或重新运行脚本！"
+        fi
+    fi
+}
+
 logo() {
     cat << 'LOGO' | echo -e "$(cat -)"
 
@@ -3410,6 +3585,9 @@ case $1 in
         ;;
     "xy-sync")
         xy_emby_sync
+        ;;
+    "temp-lgkp")
+        temp_lgkp
         ;;
     *)
         fuck_docker
