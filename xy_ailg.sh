@@ -1647,7 +1647,7 @@ auto_mount_ailg() {
 		OSNAME='synology'
     elif [ -f /etc/unraid-version ];then
         OSNAME='unraid'
-    elif command -v crontab >/dev/null 2>&1 && ps -ef | grep '[c]rond' >/dev/null 2>&1; then
+    elif command -v crontab >/dev/null 2>&1 && ps -ef | grep '[c]ron' >/dev/null 2>&1; then
         OSNAME='other'
     else
         echo -e "\033[1;33m您的系统不支持crontab计划任务！\033[0m"
