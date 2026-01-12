@@ -1566,6 +1566,11 @@ mount_img() {
                     if ! docker ps --format '{{.Names}}' | grep -q "^${emby_name}$"; then
                         if smart_mount_img "${img_path}" "${img_mount}"; then
                             INFO "已将${img_path}挂载到${img_mount}目录！"
+                            read -erp "是否将些img镜像设置为开机自动挂载？[y/n] " auto_mount
+                            if [[ "$auto_mount" == [yY] ]]; then
+                                auto_mount_ailg "${img_path}"
+                                INFO "已将${Yellow}${img_path}${NC}设置为开机自动挂载！"
+                            fi
                             return 0
                         else
                             ERROR "挂载失败，请重启设备后重试！"
