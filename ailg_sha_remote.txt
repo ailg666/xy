@@ -4,7 +4,7 @@
 >>>>>>> 3b9fe4fb5a17a2578c2d808a6442b67ec0a40689
 =======
 >>>>>>> c6ac995f853fce6f2d2c9e88277c041ee6619a5f
-ailg/g-box:hostmode f05f4a58eb21e62c2067cf75eef3656e8720e4e6d867544a7b52fddf2afb64d7
+ailg/g-box:hostmode 9001e70d84a779b9959bc02ae5eb5b905dcbff91a937b712afa7d25a7e3cbce6
 ailg/alist:latest 035048a1ed716126c7d14a2b4962e3e002a09256a6b37f7da71154bcf0d83497
 ailg/alist:hostmode f8a0538e22a838922255403da341a9ee80012f2c4b7260bd66b960cc5df56b84
 ddsderek/xiaoya-emd:latest 4eebb4a665b889d133583b17f1173ce18df25782fe24dfde1b1a1ecfed359dca
