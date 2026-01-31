@@ -2548,8 +2548,12 @@ modify_mount() {
             fi
         fi
         
-        # 在 --name 之后添加挂载
-        sed -i "s|--name=${container_name} |--name=${container_name} --volume ${host_path}:${container_path} |" "$config_file"
+        # 在 --name 之后添加挂载（路径加双引号以支持空格和特殊字符）
+        local host_path_escaped="${host_path//\\/\\\\}"
+        host_path_escaped="${host_path_escaped//&/\\&}"
+        local container_path_escaped="${container_path//\\/\\\\}"
+        container_path_escaped="${container_path_escaped//&/\\&}"
+        sed -i "s|--name=${container_name} |--name=${container_name} --volume \"${host_path_escaped}\":\"${container_path_escaped}\" |" "$config_file"
         
         INFO "已添加挂载：${host_path} -> ${container_path}"
         read -erp "是否继续添加挂载？(y/n)：" continue_add
