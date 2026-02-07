@@ -27,6 +27,8 @@ function xy_emby_sync() {
     rebuild_db_flag=false # Use boolean flag internally
     cron_env_var=""
     rebuild_env_var=""
+    schedule_mode=""
+    cron_expression=""
 
 
     find_key_index() {
@@ -291,24 +293,94 @@ function xy_emby_sync() {
     echo "---------------------------------------------"
     echo "========== 设置同步周期 =========="
     echo "---------------------------------------------"
+    echo -e "\033[36m请选择同步调度模式：\033[0m"
+    echo -e "\033[32m1) 间隔模式 (CYCLE)\033[0m - 任务结束后间隔指定小时数再次执行"
+    echo -e "\033[33m2) 定时模式 (CRON)\033[0m - 使用 crond 表达式在固定时间执行"
+    echo ""
+
     while true; do
-        read -p "请输入同步间隔 (单位: 小时, 必须为 >= 12 的整数): " sync_interval_input
-        sync_interval_input=$(echo "$sync_interval_input" | xargs)
+        read -p "请选择调度模式 [1-2]: " schedule_choice
+        schedule_choice=$(echo "$schedule_choice" | xargs)
 
-        if [[ ! "$sync_interval_input" =~ ^[0-9]+$ ]]; then
-            echo -e "\033[31m错误: 输入 '$sync_interval_input' 不是一个有效的整数. 请重新输入.\033[0m"
-            continue
-        fi
-
-        if [[ "$sync_interval_input" -lt 12 ]]; then
-            echo -e "\033[31m错误: 同步间隔必须大于或等于 12 小时. 您输入的是 '$sync_interval_input'. 请重新输入.\033[0m"
-            continue
-        fi
-
-        echo -e "\033[32m同步间隔设置为: ${sync_interval_input} 小时\033[0m"
-        sleep 1
-        break
+        case "$schedule_choice" in
+            1)
+                schedule_mode="cycle"
+                echo -e "\033[32m已选择间隔模式 (CYCLE)\033[0m"
+                echo ""
+                break
+                ;;
+            2)
+                schedule_mode="cron"
+                echo -e "\033[33m已选择定时模式 (CRON)\033[0m"
+                echo ""
+                break
+                ;;
+            *)
+                echo -e "\033[31m错误: 请输入 1 或 2\033[0m"
+                ;;
+        esac
     done
+
+    if [[ "$schedule_mode" == "cycle" ]]; then
+        while true; do
+            read -p "请输入同步间隔 (单位: 小时, 必须为 >= 12 的整数): " sync_interval_input
+            sync_interval_input=$(echo "$sync_interval_input" | xargs)
+
+            if [[ ! "$sync_interval_input" =~ ^[0-9]+$ ]]; then
+                echo -e "\033[31m错误: 输入 '$sync_interval_input' 不是一个有效的整数. 请重新输入.\033[0m"
+                continue
+            fi
+
+            if [[ "$sync_interval_input" -lt 12 ]]; then
+                echo -e "\033[31m错误: 同步间隔必须大于或等于 12 小时. 您输入的是 '$sync_interval_input'. 请重新输入.\033[0m"
+                continue
+            fi
+
+            echo -e "\033[32m同步间隔设置为: ${sync_interval_input} 小时\033[0m"
+            sleep 1
+            break
+        done
+    else
+        echo -e "\033[36m请输入 crond 表达式\033[0m"
+        echo -e "\033[33m格式说明: 分 时 日 月 周"
+        echo -e "示例:"
+        echo -e "  每天凌晨 2 点执行: \033[32m0 2 * * *\033[0m"
+        echo -e "  每 12 小时执行一次: \033[32m0 */12 * * *\033[0m"
+        echo -e "  每周日凌晨 3 点执行: \033[32m0 3 * * 0\033[0m"
+        echo -e "  每月 1 号凌晨 1 点执行: \033[32m0 1 1 * *\033[0m"
+        echo ""
+
+        while true; do
+            read -p "请输入 crond 表达式: " cron_expression
+            cron_expression=$(echo "$cron_expression" | xargs)
+
+            if [[ ! "$cron_expression" =~ ^[0-9*,/\-]+\ [0-9*,/\-]+\ [0-9*,?\-]+\ [0-9*,/\-]+\ [0-9*,?\-]+$ ]]; then
+                echo -e "\033[31m错误: crond 表达式格式不正确. 请重新输入.\033[0m"
+                echo -e "\033[33m正确格式示例: 0 2 * * * (每天凌晨 2 点)\033[0m"
+                continue
+            fi
+
+            IFS=' ' read -ra FIELDS <<< "$cron_expression"
+            minute_field="${FIELDS[0]}"
+            hour_field="${FIELDS[1]}"
+            day_field="${FIELDS[2]}"
+            month_field="${FIELDS[3]}"
+            weekday_field="${FIELDS[4]}"
+
+            if [[ "$minute_field" == *\* && "$minute_field" != */* ]] || \
+               [[ "$hour_field" == *\* && "$hour_field" != */* ]] || \
+               [[ "$day_field" == *\* && "$day_field" != */? ]] || \
+               [[ "$month_field" == *\* && "$month_field" != */* ]] || \
+               [[ "$weekday_field" == *\* && "$weekday_field" != */? ]]; then
+                :
+            fi
+
+            echo -e "\033[32mcrond 表达式设置为: ${cron_expression}\033[0m"
+            echo -e "\033[36m将按照 crond 表达式定时执行同步任务\033[0m"
+            sleep 1
+            break
+        done
+    fi
     echo "---------------------------------------------"
     echo "========== 设置其他选项 =========="
     echo "---------------------------------------------"
@@ -448,7 +520,17 @@ function xy_emby_sync() {
     
     if docker_pull "${emd_image}"; then
         img_parent_dir=$(dirname "${mount_path}")
-        docker run -d --name "${container_name}" -e CYCLE="${sync_interval_input}" ${mode_env_var} \
+
+        local schedule_env_var=""
+        if [[ "$schedule_mode" == "cron" ]]; then
+            schedule_env_var="-e CRON=\"${cron_expression}\""
+            echo -e "\033[36m使用 CRON 模式启动容器: ${cron_expression}\033[0m"
+        else
+            schedule_env_var="-e CYCLE=\"${sync_interval_input}\""
+            echo -e "\033[36m使用 CYCLE 模式启动容器: ${sync_interval_input} 小时\033[0m"
+        fi
+
+        docker run -d --name "${container_name}" ${schedule_env_var} ${mode_env_var} \
             -v "${mount_path}:/media.img" -v "${img_parent_dir}:/ailg" --privileged --net=host --restart=always \
             "${emd_image}" --dirs "${output_string}" ${rebuild_env_var} ${clean_env_var} ${dns_env_var}
         echo -e "小雅Emby爬虫G-Box专用版安装成功了！"
