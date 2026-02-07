@@ -496,12 +496,13 @@ function xy_emby_sync() {
             fi
         fi
     done
+    local emd_image=""
     if [[ $(uname -m) == "armv7l" ]]; then
         emd_image="ailg/xy-emd:arm7-latest"
     else
         emd_image="ailg/xy-emd:latest"
     fi
-    
+
     local mode_env_var=""
     local container_name=""
     if [[ "${container_mode}" == "emby" ]]; then
@@ -517,18 +518,20 @@ function xy_emby_sync() {
         container_name="xy-emd"
         echo -e "\033[33mxy-emd将使用默认emby模式，容器名：${container_name}\033[0m"
     fi
-    
+
     if docker_pull "${emd_image}"; then
         img_parent_dir=$(dirname "${mount_path}")
 
         local schedule_env_var=""
         if [[ "$schedule_mode" == "cron" ]]; then
-            schedule_env_var="-e CRON=\"${cron_expression}\""
+            schedule_env_var="-e CRON=${cron_expression}"
             echo -e "\033[36m使用 CRON 模式启动容器: ${cron_expression}\033[0m"
         else
-            schedule_env_var="-e CYCLE=\"${sync_interval_input}\""
+            schedule_env_var="-e CYCLE=${sync_interval_input}"
             echo -e "\033[36m使用 CYCLE 模式启动容器: ${sync_interval_input} 小时\033[0m"
         fi
+
+        echo -e "\033[36m[DEBUG] 镜像名称: ${emd_image}\033[0m"
 
         docker run -d --name "${container_name}" ${schedule_env_var} ${mode_env_var} \
             -v "${mount_path}:/media.img" -v "${img_parent_dir}:/ailg" --privileged --net=host --restart=always \
