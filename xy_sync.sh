@@ -522,18 +522,29 @@ function xy_emby_sync() {
     if docker_pull "${emd_image}"; then
         img_parent_dir=$(dirname "${mount_path}")
 
-        local schedule_env_var=""
+        # 根据调度模式设置相应的环境变量
+        local docker_args=()
         if [[ "$schedule_mode" == "cron" ]]; then
-            schedule_env_var="-e CRON=${cron_expression}"
+            # CRON 表达式必须作为单个参数传递给 Docker
+            docker_args=("-e" "CRON=${cron_expression}")
             echo -e "\033[36m使用 CRON 模式启动容器: ${cron_expression}\033[0m"
         else
-            schedule_env_var="-e CYCLE=${sync_interval_input}"
+            docker_args=("-e" "CYCLE=${sync_interval_input}")
             echo -e "\033[36m使用 CYCLE 模式启动容器: ${sync_interval_input} 小时\033[0m"
         fi
 
+        # 添加 MODE 环境变量
+        if [[ "${container_mode}" == "emby" ]]; then
+            docker_args+=("-e" "MODE=emby")
+        elif [[ "${container_mode}" == "jellyfin" ]]; then
+            docker_args+=("-e" "MODE=jellyfin")
+        fi
+
+        # 调试信息：显示完整的 docker run 命令
         echo -e "\033[36m[DEBUG] 镜像名称: ${emd_image}\033[0m"
 
-        docker run -d --name "${container_name}" ${schedule_env_var} ${mode_env_var} \
+        # 使用数组构建 docker run 命令
+        docker run -d --name "${container_name}" "${docker_args[@]}" \
             -v "${mount_path}:/media.img" -v "${img_parent_dir}:/ailg" --privileged --net=host --restart=always \
             "${emd_image}" --dirs "${output_string}" ${rebuild_env_var} ${clean_env_var} ${dns_env_var}
         echo -e "小雅Emby爬虫G-Box专用版安装成功了！"
