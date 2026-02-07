@@ -13,7 +13,6 @@ function xy_emby_sync() {
         "综艺/"
         "音乐/"
         "📺画质演示测试（4K，8K，HDR，Dolby）/"
-        "json/"
     )
 
     declare -a DEFAULT_DIRS=(
