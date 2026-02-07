@@ -433,6 +433,43 @@ function xy_emby_sync() {
         echo -e "\033[33m将为您使用默认DNS.\033[0m"
     fi
 
+    # --- STRM 主机名替换配置 ---
+    echo "---------------------------------------------"
+    echo "========== 设置 STRM 主机名替换 =========="
+    echo "---------------------------------------------"
+    echo -e "\033[36m说明：同步后的 .strm 文件默认使用 http://xiaoya.host:5678\033[0m"
+    echo -e "\033[36m如果您的访问地址不同，需要在每次同步后自动替换主机名\033[0m"
+    echo ""
+    read -p "是否在每次同步后替换 STRM 文件的主机名？(y/n): " strm_replace_choice
+    local strm_host_env_var=""
+    if [[ "$strm_replace_choice" == [yY] ]]; then
+        while true; do
+            echo -e "\033[33m请输入完整的主机名（包括协议头和端口）\033[0m"
+            echo -e "\033[33m例如：https://strm.abc.com:2096 或 http://192.168.1.100:8080\033[0m"
+            read -p "请输入: " strm_host_input
+            strm_host_input=$(echo "$strm_host_input" | xargs)
+
+            if [[ -z "$strm_host_input" ]]; then
+                echo -e "\033[31m错误: 您没有输入任何内容.\033[0m"
+                sleep 1
+                continue
+            fi
+
+            # 验证格式：必须以 http:// 或 https:// 开头
+            if [[ ! "$strm_host_input" =~ ^https?:// ]]; then
+                echo -e "\033[31m错误: 主机名必须以 http:// 或 https:// 开头.\033[0m"
+                sleep 1
+                continue
+            fi
+
+            echo -e "\033[32mSTRM 主机名设置为: ${strm_host_input}\033[0m"
+            strm_host_env_var="-e STRM_HOST=${strm_host_input}"
+            break
+        done
+    else
+        echo -e "\033[33m您选择不替换 STRM 主机名.\033[0m"
+    fi
+
     if [[ -n "${container_mode}" ]]; then
         echo -e "\n\033[1;36m=== 容器类型配置 ===\033[0m"
         echo -e "\033[32m使用预设模式: ${container_mode}\033[0m"
@@ -538,6 +575,14 @@ function xy_emby_sync() {
             docker_args+=("-e" "MODE=emby")
         elif [[ "${container_mode}" == "jellyfin" ]]; then
             docker_args+=("-e" "MODE=jellyfin")
+        fi
+
+        # 添加 STRM_HOST 环境变量（如果用户设置了主机名替换）
+        if [[ -n "${strm_host_env_var}" ]]; then
+            # strm_host_env_var 格式为 "-e STRM_HOST=xxx"
+            # 需要拆分为两个参数
+            IFS=' ' read -ra STRM_ARGS <<< "${strm_host_env_var}"
+            docker_args+=("${STRM_ARGS[@]}")
         fi
 
         # 调试信息：显示完整的 docker run 命令
