@@ -1997,21 +1997,6 @@ unmount_image() {
         fi
     fi
 
-    if [ -f "${img_dir}/.loop" ]; then
-        local loop_device=$(grep "^media " "${img_dir}/.loop" 2>/dev/null | awk '{print $2}')
-        if [ -n "$loop_device" ] && [ -b "$loop_device" ]; then
-            losetup -d "$loop_device" 2>/dev/null
-        fi
-    fi
-
-    local loop_info=$(losetup -a | grep "${img_path}" | head -n1)
-    if [ -n "$loop_info" ]; then
-        local loop_dev=$(echo "$loop_info" | cut -d: -f1)
-        if [ -n "$loop_dev" ]; then
-            losetup -d "$loop_dev" 2>/dev/null
-        fi
-    fi
-
     return $umount_success
 }
 
@@ -2048,12 +2033,12 @@ manage_auto_mount() {
 
                 local mount_status=""
                 if mount | grep -qF "${mount_point}"; then
-                    mount_status="\033[1;32m[已挂载]\033[0m"
+                    mount_status="[已挂载]"
                 else
-                    mount_status="\033[1;33m[未挂载]\033[0m"
+                    mount_status="[未挂载]"
                 fi
 
-                printf "[ %-1d ] \033[1;33m%s\033[0m %s\n" $((index + 1)) "$img_path" "$mount_status"
+                printf "[ %-1d ] %s %s\n" $((index + 1)) "$img_path" "$mount_status"
             done
 
             echo -e "\n[ 0 ] \033[1;33m全部卸载\033[0m"
