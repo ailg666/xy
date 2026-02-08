@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # shellcheck shell=bash
 # shellcheck disable=SC2086
 
@@ -1685,8 +1685,34 @@ auto_mount_ailg() {
             INFO "已存在自动挂载配置，跳过添加"
         fi
     elif [[ $OSNAME == "unraid" ]];then
+        [ -z "${config_dir}" ] && get_config_path
+
         if ! grep -qF -- "$COMMAND" /boot/config/go; then
-            echo -e "/usr/bin/mount_ailg \"${img_path}\"" >> /boot/config/go
+            if [ -n "${config_dir}" ] && [ ! -f "${config_dir}/mount_ailg.bak" ]; then
+                local gbox_container=$(docker ps -a | grep 'ailg/g-box' | awk '{print $NF}' | head -n1)
+                gbox_container=${gbox_container:-"g-box"}
+
+                if docker ps -a | grep -q "${gbox_container}"; then
+                    docker cp "${gbox_container}:/var/lib/mount_ailg" "${config_dir}/mount_ailg.bak"
+                    chmod +x "${config_dir}/mount_ailg.bak"
+                    INFO "已从 g-box 容器复制 mount_ailg 脚本到配置目录"
+                else
+                    curl -sSLf -o "${config_dir}/mount_ailg.bak" "https://ailg.ggbond.org/mount_ailg"
+                    chmod +x "${config_dir}/mount_ailg.bak"
+                    INFO "已从远程获取 mount_ailg 脚本到配置目录"
+                fi
+            fi
+
+            cat >> /boot/config/go << UNRAID_EOF
+
+# 自动挂载 AILG 镜像: ${img_name}
+if [ -f "${config_dir}/mount_ailg.bak" ]; then
+    cp -f "${config_dir}/mount_ailg.bak" /usr/bin/mount_ailg
+    chmod +x /usr/bin/mount_ailg
+fi
+/usr/bin/mount_ailg "${img_path}"
+UNRAID_EOF
+
             INFO "已在 Unraid 的 /boot/config/go 中配置开机自启"
         else
             INFO "已存在自动挂载配置，跳过添加"
@@ -1817,9 +1843,16 @@ disable_auto_mount() {
             INFO "已从群晖系统的 /etc/rc.local 中移除开机自动挂载配置"
         fi
     elif [[ $OSNAME == "unraid" ]];then
+        [ -z "${config_dir}" ] && get_config_path
+
         if grep -qF -- "$COMMAND" /boot/config/go 2>/dev/null; then
             sed -i '/mount_ailg/d' /boot/config/go
             INFO "已从 Unraid 的 /boot/config/go 中移除开机自动挂载配置"
+        fi
+
+        if [ -n "${config_dir}" ] && [ -f "${config_dir}/mount_ailg.bak" ]; then
+            rm -f "${config_dir}/mount_ailg.bak"
+            INFO "已删除 g-box 配置目录中的 mount_ailg 备份文件"
         fi
     elif [[ $OSNAME == "systemd" ]];then
         local service_file="/etc/systemd/system/${service_name}.service"
@@ -3256,7 +3289,7 @@ rm_alist() {
 }
 
 choose_mirrors() {
-    [ -z "${config_dir}" ] && get_config_path check_docker
+    [ -z "${config_dir}" ] && get_config_path
     mirrors=(
         "docker.io"
         "docker.gbox.us.kg"
