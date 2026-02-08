@@ -1124,6 +1124,16 @@ img_uninstall() {
                         config_loop=$(docker exec ${emby_name} grep "^config " /ailg/.loop 2>/dev/null | awk '{print $2}')
                     fi
 
+                    if [[ -f "${media_path}" ]]; then
+                        disable_auto_mount "${media_path}"
+                        INFO "已检查并取消 media 镜像的开机自动挂载配置"
+                    fi
+
+                    if [[ -f "${config_img_path}" ]]; then
+                        disable_auto_mount "${config_img_path}"
+                        INFO "已检查并取消 config 镜像的开机自动挂载配置"
+                    fi
+
                     for op_emby in "${img_order[@]}"; do
                         docker stop "${op_emby}"
                         INFO "${op_emby}容器已关闭！"
@@ -1777,6 +1787,63 @@ WRAPPEOF
             echo -e "(sleep 60 && /usr/bin/mount_ailg \"${img_path}\") &" >> /etc/rc.local
             chmod +x /etc/rc.local
             INFO "已在 /etc/rc.local 中配置开机自启"
+        fi
+    fi
+}
+
+disable_auto_mount() {
+    local img_path="$1"
+    local img_name=$(basename "$img_path" .img)
+    local service_name="mount-ailg-${img_name}"
+
+    if [ -f /etc/synoinfo.conf ];then
+        OSNAME='synology'
+    elif [ -f /etc/unraid-version ];then
+        OSNAME='unraid'
+    elif command -v systemctl >/dev/null 2>&1 && [ -d /etc/systemd/system ]; then
+        OSNAME='systemd'
+    elif command -v crontab >/dev/null 2>&1 && ps -ef | grep '[c]ron' >/dev/null 2>&1; then
+        OSNAME='other'
+    else
+        OSNAME='rclocal'
+    fi
+
+    COMMAND="/usr/bin/mount_ailg \"${img_path}\""
+
+    if [[ $OSNAME == "synology" ]];then
+        if grep -qF -- "$COMMAND" /etc/rc.local 2>/dev/null; then
+            cp -f /etc/rc.local /etc/rc.local.bak
+            sed -i '/mount_ailg/d' /etc/rc.local
+            INFO "已从群晖系统的 /etc/rc.local 中移除开机自动挂载配置"
+        fi
+    elif [[ $OSNAME == "unraid" ]];then
+        if grep -qF -- "$COMMAND" /boot/config/go 2>/dev/null; then
+            sed -i '/mount_ailg/d' /boot/config/go
+            INFO "已从 Unraid 的 /boot/config/go 中移除开机自动挂载配置"
+        fi
+    elif [[ $OSNAME == "systemd" ]];then
+        local service_file="/etc/systemd/system/${service_name}.service"
+        if [ -f "$service_file" ]; then
+            systemctl stop "${service_name}.service" 2>/dev/null
+            systemctl disable "${service_name}.service" 2>/dev/null
+            rm -f "$service_file"
+            systemctl daemon-reload
+            INFO "已移除 systemd 服务: ${service_name}"
+        fi
+    elif [[ $OSNAME == "other" ]];then
+        if crontab -l 2>/dev/null | grep -q "mount_ailg.*${img_path}"; then
+            crontab -l 2>/dev/null | grep -v "mount_ailg.*${img_path}" > /tmp/cronjob.tmp
+            crontab /tmp/cronjob.tmp 2>/dev/null
+            rm -f /tmp/cronjob.tmp
+            INFO "已从 crontab 中移除开机自动挂载配置"
+        fi
+
+        local wrapper_script="/usr/bin/mount_ailg_wrapper_${img_name}"
+        rm -f "$wrapper_script" 2>/dev/null
+    else
+        if grep -qF -- "$img_path" /etc/rc.local 2>/dev/null; then
+            sed -i '/mount_ailg/d' /etc/rc.local
+            INFO "已从 /etc/rc.local 中移除开机自动挂载配置"
         fi
     fi
 }
