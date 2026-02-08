@@ -1881,6 +1881,244 @@ disable_auto_mount() {
     fi
 }
 
+parse_auto_mount_images() {
+    local images=()
+    local img_path=""
+
+    if [ -f /etc/synoinfo.conf ];then
+        OSNAME='synology'
+    elif [ -f /etc/unraid-version ];then
+        OSNAME='unraid'
+    elif command -v systemctl >/dev/null 2>&1 && [ -d /etc/systemd/system ]; then
+        OSNAME='systemd'
+    elif command -v crontab >/dev/null 2>&1 && ps -ef | grep '[c]ron' >/dev/null 2>&1; then
+        OSNAME='other'
+    else
+        OSNAME='rclocal'
+    fi
+
+    if [[ $OSNAME == "synology" ]] || [[ $OSNAME == "unraid" ]] || [[ $OSNAME == "rclocal" ]]; then
+        local config_file=""
+        [[ $OSNAME == "synology" || $OSNAME == "rclocal" ]] && config_file="/etc/rc.local"
+        [[ $OSNAME == "unraid" ]] && config_file="/boot/config/go"
+
+        if [ -f "$config_file" ]; then
+            while IFS= read -r line; do
+                if echo "$line" | grep -q "mount_ailg"; then
+                    img_path=$(echo "$line" | grep -oP 'mount_ailg\s+"\K[^"]+' || echo "$line" | grep -oP "mount_ailg\s+'\K[^']+")
+                    [ -n "$img_path" ] && [ -f "$img_path" ] && images+=("$img_path")
+                fi
+            done < "$config_file"
+        fi
+    elif [[ $OSNAME == "systemd" ]];then
+        for service_file in /etc/systemd/system/mount-ailg-*.service; do
+            if [ -f "$service_file" ]; then
+                img_path=$(grep "ExecStart=" "$service_file" | grep -oP 'mount_ailg\s+"\K[^"]+')
+                [ -n "$img_path" ] && [ -f "$img_path" ] && images+=("$img_path")
+            fi
+        done
+    elif [[ $OSNAME == "other" ]];then
+        if crontab -l 2>/dev/null | grep -q "mount_ailg"; then
+            while IFS= read -r line; do
+                if echo "$line" | grep -q "mount_ailg"; then
+                    img_path=$(echo "$line" | grep -oP 'mount_ailg\s+"\K[^"]+' || echo "$line" | grep -oP "mount_ailg\s+'\K[^']+")
+                    [ -n "$img_path" ] && [ -f "$img_path" ] && images+=("$img_path")
+                fi
+            done < <(crontab -l 2>/dev/null | grep "mount_ailg")
+        fi
+    fi
+
+    echo "${images[@]}"
+}
+
+unmount_image() {
+    local img_path="$1"
+    local img_name=$(basename "$img_path" .img)
+    local img_dir=$(dirname "$img_path")
+    local mount_point="${img_dir}/emby-xy"
+    local umount_success=0
+
+    INFO "开始卸载镜像: ${img_path}"
+
+    if ! mount | grep -qF "${mount_point}"; then
+        WARN "镜像 ${img_name} 未挂载"
+        return 0
+    fi
+
+    INFO "尝试正常卸载..."
+    if umount "${mount_point}" 2>/dev/null; then
+        INFO "卸载成功"
+        umount_success=1
+    else
+        WARN "正常卸载失败，尝试强制卸载 (-l)..."
+        if umount -l "${mount_point}" 2>/dev/null; then
+            INFO "强制卸载成功"
+            umount_success=1
+        else
+            WARN "强制卸载失败，尝试终止占用进程后卸载..."
+
+            local pids=""
+            local method=""
+
+            if command -v lsof >/dev/null 2>&1; then
+                pids=$(lsof -t "${mount_point}" 2>/dev/null)
+                method="lsof"
+            elif command -v fuser >/dev/null 2>&1; then
+                pids=$(fuser -m "${mount_point}" 2>/dev/null)
+                method="fuser"
+            elif [ -d /proc ]; then
+                for pid in $(ls -1 /proc 2>/dev/null | grep -E '^[0-9]+$'); do
+                    if [ -f "/proc/${pid}/mounts" ] && grep -q "${mount_point}" "/proc/${pid}/mounts" 2>/dev/null; then
+                        pids="${pids} ${pid}"
+                    fi
+                done
+                method="proc"
+            fi
+
+            if [ -n "$pids" ]; then
+                INFO "使用 ${method} 找到占用进程: ${pids}"
+                kill -9 $pids 2>/dev/null
+                sleep 2
+                if umount "${mount_point}" 2>/dev/null || umount -l "${mount_point}" 2>/dev/null; then
+                    INFO "终止进程后卸载成功"
+                    umount_success=1
+                else
+                    ERROR "终止进程后仍然无法卸载"
+                fi
+            else
+                if [ -z "$method" ]; then
+                    WARN "系统中未找到 lsof/fuser 命令，无法查找占用进程"
+                    WARN "可以安装 lsof 或 fuser 后重试"
+                else
+                    WARN "使用 ${method} 未找到占用进程"
+                fi
+                ERROR "卸载失败，可能需要重启系统"
+            fi
+        fi
+    fi
+
+    if [ -f "${img_dir}/.loop" ]; then
+        local loop_device=$(grep "^media " "${img_dir}/.loop" 2>/dev/null | awk '{print $2}')
+        if [ -n "$loop_device" ] && [ -b "$loop_device" ]; then
+            losetup -d "$loop_device" 2>/dev/null
+        fi
+    fi
+
+    local loop_info=$(losetup -a | grep "${img_path}" | head -n1)
+    if [ -n "$loop_info" ]; then
+        local loop_dev=$(echo "$loop_info" | cut -d: -f1)
+        if [ -n "$loop_dev" ]; then
+            losetup -d "$loop_dev" 2>/dev/null
+        fi
+    fi
+
+    return $umount_success
+}
+
+manage_auto_mount() {
+    while true; do
+        clear
+        echo -e "———————————————————————————————————— \033[1;33mA  I  老  G\033[0m —————————————————————————————————"
+        echo -e "\n"
+        echo -e "\033[1;32m1、挂载老G速装版镜像\033[0m"
+        echo -e "\033[1;32m2、卸载并取消开机自动挂载\033[0m"
+        echo -e "\n"
+        echo -e "——————————————————————————————————————————————————————————————————————————————————"
+
+        read -erp "请输入您的选择（1-2，按b返回上级菜单）：" manage_select
+        case "$manage_select" in
+        1)
+            mount_img
+            break
+            ;;
+        2)
+            local auto_images=($(parse_auto_mount_images))
+
+            if [ ${#auto_images[@]} -eq 0 ]; then
+                WARN "未找到任何开机自动挂载配置"
+                read -n 1 -rp "按任意键返回"
+                break
+            fi
+
+            echo -e "\n\033[1;37m找到以下开机自动挂载的镜像：\033[0m"
+            for index in "${!auto_images[@]}"; do
+                img_path="${auto_images[$index]}"
+                img_name=$(basename "$img_path" .img)
+                mount_point="${img_path%/*.img}/emby-xy"
+
+                local mount_status=""
+                if mount | grep -qF "${mount_point}"; then
+                    mount_status="\033[1;32m[已挂载]\033[0m"
+                else
+                    mount_status="\033[1;33m[未挂载]\033[0m"
+                fi
+
+                printf "[ %-1d ] \033[1;33m%s\033[0m %s\n" $((index + 1)) "$img_path" "$mount_status"
+            done
+
+            echo -e "\n[ 0 ] \033[1;33m全部卸载\033[0m"
+            echo -e "\033[1;31m[ b ] 返回上级菜单\033[0m"
+
+            while :; do
+                read -erp "请输入要卸载的镜像序号：" img_select
+                [ "$img_select" = "b" ] || [ "$img_select" = "B" ] && break 2
+
+                if [ "$img_select" = "0" ]; then
+                    local all_success=1
+                    for img_path in "${auto_images[@]}"; do
+                        echo -e "\n\033[1;36m========================================\033[0m"
+                        unmount_image "$img_path"
+                        if [ $? -eq 1 ]; then
+                            all_success=0
+                        fi
+                        disable_auto_mount "$img_path"
+                    done
+
+                    echo -e "\n\033[1;36m========================================\033[0m"
+                    if [ $all_success -eq 1 ]; then
+                        INFO "所有镜像卸载成功，开机自动挂载已取消"
+                    else
+                        WARN "部分镜像卸载失败"
+                        echo -e "\033[1;33m建议重启系统以确保完全释放资源\033[0m"
+                    fi
+                    break
+                elif [ "$img_select" -gt 0 ] && [ "$img_select" -le ${#auto_images[@]} ]; then
+                    img_path="${auto_images[$((img_select - 1))]}"
+                    echo -e "\n\033[1;36m========================================\033[0m"
+                    unmount_image "$img_path"
+                    umount_result=$?
+                    disable_auto_mount "$img_path"
+
+                    echo -e "\n\033[1;36m========================================\033[0m"
+
+                    if [ $umount_result -eq 1 ]; then
+                        WARN "镜像卸载失败或部分失败"
+                        echo -e "\033[1;33m建议重启系统以确保完全释放资源\033[0m"
+                    else
+                        INFO "镜像卸载成功，开机自动挂载已取消"
+                    fi
+
+                    read -n 1 -rp "按任意键继续"
+                    break
+                else
+                    ERROR "输入错误，请输入 0-$((auto_images_count)) 或 b 返回"
+                fi
+            done
+            break
+            ;;
+        [Bb])
+            clear
+            break
+            ;;
+        *)
+            ERROR "输入错误，按任意键重新输入！"
+            read -r -n 1
+            continue
+            ;;
+        esac
+    done
+}
+
 expand_img() {
     img_order=()
     search_img="emby/embyserver|amilys/embyserver|nyanmisaka/jellyfin|jellyfin/jellyfin"
@@ -2190,7 +2428,7 @@ user_selecto() {
         echo -e "\n"
         echo -e "\033[1;32m1、卸载全在这\033[0m"
         echo -e "\033[1;32m2、更换开心版小雅EMBY\033[0m"
-        echo -e "\033[1;32m3、挂载老G速装版镜像\033[0m"
+        echo -e "\\033[1;32m3、挂载/卸载老G速装版镜像\\033[0m"
         echo -e "\n"
         echo -e "\033[1;32m4、老G速装版镜像重装/同步config（已取消此功能，可选12替代）\033[0m"
         echo -e "\033[1;32m5、G-box自动更新/取消自动更新\033[0m"
@@ -2214,7 +2452,7 @@ user_selecto() {
         case "$fo_select" in
         1) ailg_uninstall; break ;;
         2) happy_emby; break ;;
-        3) mount_img; break ;;
+        3) manage_auto_mount; break ;;
         # 4) sync_config; break ;;
         5) sync_plan; break ;;
         6) expand_img; break ;;
