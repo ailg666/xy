@@ -1722,10 +1722,10 @@ auto_mount_ailg() {
             mv /tmp/config.go.tmp /boot/config/go
         fi
 
-        echo "[ -f \"${config_dir}/mount_ailg.bak\" ] && cp -f \"${config_dir}/mount_ailg.bak\" /usr/bin/mount_ailg && chmod +x /usr/bin/mount_ailg && /usr/bin/mount_ailg \"${img_path}\"" >> /boot/config/go
+        echo "for i in \$(seq 1 10); do touch /usr/bin/test_write 2>/dev/null && rm -f /usr/bin/test_write && break || sleep 30; done && [ -f \"${config_dir}/mount_ailg.bak\" ] && cp -f \"${config_dir}/mount_ailg.bak\" /usr/bin/mount_ailg && chmod +x /usr/bin/mount_ailg && /usr/bin/mount_ailg \"${img_path}\"" >> /boot/config/go
 
         INFO "已在 Unraid 的 /boot/config/go 中配置开机自启"
-        INFO "开机时将自动从 g-box 配置目录恢复 mount_ailg 脚本"
+        INFO "开机时将等待文件系统可写后自动挂载（最多等待5分钟）"
     elif [[ $OSNAME == "systemd" ]];then
         local service_file="/etc/systemd/system/${service_name}.service"
 
