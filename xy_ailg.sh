@@ -1692,17 +1692,17 @@ auto_mount_ailg() {
             return 1
         fi
 
-        if [ ! -f "${config_dir}/mount_ailg.bak" ]; then
+        if [ ! -f "${config_dir}/mount_ailg" ]; then
             local gbox_container=$(docker ps -a | grep 'ailg/g-box' | awk '{print $NF}' | head -n1)
             gbox_container=${gbox_container:-"g-box"}
 
             if docker ps -a | grep -q "${gbox_container}"; then
-                docker cp "${gbox_container}:/var/lib/mount_ailg" "${config_dir}/mount_ailg.bak"
-                chmod +x "${config_dir}/mount_ailg.bak"
+                docker cp "${gbox_container}:/var/lib/mount_ailg" "${config_dir}/mount_ailg"
+                chmod +x "${config_dir}/mount_ailg"
                 INFO "已从 g-box 容器复制 mount_ailg 脚本到配置目录"
             else
-                if curl -sSLf -o "${config_dir}/mount_ailg.bak" "https://ailg.ggbond.org/mount_ailg" 2>/dev/null; then
-                    chmod +x "${config_dir}/mount_ailg.bak"
+                if curl -sSLf -o "${config_dir}/mount_ailg" "https://ailg.ggbond.org/mount_ailg" 2>/dev/null; then
+                    chmod +x "${config_dir}/mount_ailg"
                     INFO "已从远程获取 mount_ailg 脚本到配置目录"
                 else
                     ERROR "无法获取 mount_ailg 脚本，配置失败！"
@@ -1711,21 +1711,14 @@ auto_mount_ailg() {
             fi
         fi
 
-        if [ ! -f /usr/bin/mount_ailg ]; then
-            cp -f "${config_dir}/mount_ailg.bak" /usr/bin/mount_ailg
-            chmod +x /usr/bin/mount_ailg
-            INFO "已恢复 /usr/bin/mount_ailg 脚本"
-        fi
-
         if [ -f /boot/config/go ]; then
             grep -v "mount_ailg" /boot/config/go > /tmp/config.go.tmp 2>/dev/null
             mv /tmp/config.go.tmp /boot/config/go
         fi
 
-        echo "for i in \$(seq 1 10); do touch /usr/bin/test_write 2>/dev/null && rm -f /usr/bin/test_write && break || sleep 30; done && [ -f \"${config_dir}/mount_ailg.bak\" ] && cp -f \"${config_dir}/mount_ailg.bak\" /usr/bin/mount_ailg && chmod +x /usr/bin/mount_ailg && /usr/bin/mount_ailg \"${img_path}\"" >> /boot/config/go
+        echo "sleep 60 && ${config_dir}/mount_ailg \"${img_path}\" > /tmp/mount_ailg.log" >> /boot/config/go
 
         INFO "已在 Unraid 的 /boot/config/go 中配置开机自启"
-        INFO "开机时将等待文件系统可写后自动挂载（最多等待5分钟）"
     elif [[ $OSNAME == "systemd" ]];then
         local service_file="/etc/systemd/system/${service_name}.service"
 
