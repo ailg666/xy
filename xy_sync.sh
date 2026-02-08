@@ -382,16 +382,39 @@ function xy_emby_sync() {
         done
     fi
     echo "---------------------------------------------"
-    echo "========== 设置其他选项 =========="
+    echo "========== 设置数据库重建模式 =========="
     echo "---------------------------------------------"
-    read -p "是否重建本地数据库? (y/n): " rebuild_choice
-    if [[ "$rebuild_choice" == [yY] ]]; then
-        rebuild_env_var="--rebuild-db"
-        echo -e "\033[32m您选择了重建本地数据库.\033[0m"
-    else
-        rebuild_env_var=""
-        echo -e "\033[33m您选择了不重建本地数据库.\033[0m"
-    fi
+    echo -e "\033[36m请选择数据库重建模式：\033[0m"
+    echo -e "\033[32m1) 仅首次重建（推荐）\033[0m - 仅首次启动完整扫描，适合新建或修复数据库"
+    echo -e "\033[33m2) 每次重建\033[0m - 每次容器重启都完整扫描本地文件（适合调试）"
+    echo -e "\033[34m3) 不重建\033[0m - 使用本地已有数据库（适合日常使用）"
+    echo ""
+
+    while true; do
+        read -p "请选择 [1-3，默认1]: " rebuild_choice
+        rebuild_choice=${rebuild_choice:-1}
+
+        case "$rebuild_choice" in
+            1)
+                rebuild_env_var="--rebuild-db-once"
+                echo -e "\033[32m已选择：仅首次重建数据库（推荐模式）\033[0m"
+                break
+                ;;
+            2)
+                rebuild_env_var="--rebuild-db"
+                echo -e "\033[33m已选择：每次重启都重建数据库\033[0m"
+                break
+                ;;
+            3)
+                rebuild_env_var=""
+                echo -e "\033[34m已选择：不重建数据库\033[0m"
+                break
+                ;;
+            *)
+                echo -e "\033[31m错误：请输入 1、2 或 3\033[0m"
+                ;;
+        esac
+    done
     echo "---------------------------------------------"
     echo -e "\033[33m清理模式默认开启，同步执行后，会删除远程没有但本地有的文件和无效目录！\033[0m"
     read -p "是否关闭清理模式（默认清理）? (y/n): " clean_choice
@@ -558,6 +581,14 @@ function xy_emby_sync() {
 
     if docker_pull "${emd_image}"; then
         img_parent_dir=$(dirname "${mount_path}")
+
+        if [[ "$rebuild_env_var" == "--rebuild-db-once" ]]; then
+            marker_file="${img_parent_dir}/.db_rebuilt"
+            if [[ -f "$marker_file" ]]; then
+                rm -f "$marker_file"
+                echo -e "\033[36m容器启动后将执行完整扫描并重建数据库\033[0m"
+            fi
+        fi
 
         # 根据调度模式设置相应的环境变量
         local docker_args=()
