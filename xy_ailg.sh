@@ -1643,44 +1643,141 @@ mount_img() {
 }
 
 auto_mount_ailg() {
+    local img_path="$1"
+    local img_name=$(basename "$img_path" .img)
+    local service_name="mount-ailg-${img_name}"
+
     if [ -f /etc/synoinfo.conf ];then
-		OSNAME='synology'
+        OSNAME='synology'
     elif [ -f /etc/unraid-version ];then
         OSNAME='unraid'
+    elif command -v systemctl >/dev/null 2>&1 && [ -d /etc/systemd/system ]; then
+        OSNAME='systemd'
     elif command -v crontab >/dev/null 2>&1 && ps -ef | grep '[c]ron' >/dev/null 2>&1; then
         OSNAME='other'
     else
-        echo -e "\033[1;33m您的系统不支持crontab计划任务！\033[0m"
-        echo -e "\033[1;33m将尝试在/etc/rc.local中添加启动命令！\033[0m"
+        OSNAME='rclocal'
     fi
-    COMMAND="/usr/bin/mount_ailg \"$1\""
+
+    COMMAND="/usr/bin/mount_ailg \"${img_path}\""
+
     if [[ $OSNAME == "synology" ]];then
         if ! grep -qF -- "$COMMAND" /etc/rc.local; then
             cp -f /etc/rc.local /etc/rc.local.bak
             sed -i '/mount_ailg/d' /etc/rc.local
             if grep -q 'exit 0' /etc/rc.local; then
-                sed -i "/exit 0/i\/usr/bin/mount_ailg \"$1\"" /etc/rc.local
+                sed -i "/exit 0/i\\/usr/bin/mount_ailg \"${img_path}\"" /etc/rc.local
             else
-                echo -e "/usr/bin/mount_ailg \"$1\"" >> /etc/rc.local
+                echo -e "/usr/bin/mount_ailg \"${img_path}\"" >> /etc/rc.local
             fi
+            INFO "已在群晖系统的 /etc/rc.local 中配置开机自启"
+        else
+            INFO "已存在自动挂载配置，跳过添加"
         fi
     elif [[ $OSNAME == "unraid" ]];then
         if ! grep -qF -- "$COMMAND" /boot/config/go; then
-            echo -e "/usr/bin/mount_ailg \"$1\"" >> /boot/config/go
-        fi
-    elif [[ $OSNAME == "other" ]];then
-        CRON="@reboot /usr/bin/mount_ailg \"$1\""
-        crontab -l | grep -v mount_ailg > /tmp/cronjob.tmp
-        echo -e "${CRON}" >> /tmp/cronjob.tmp
-        crontab /tmp/cronjob.tmp
-    else
-        if grep -qF -- "$img_path" /etc/rc.local; then
-            INFO "已存在自动挂载配置，跳过添加。"
+            echo -e "/usr/bin/mount_ailg \"${img_path}\"" >> /boot/config/go
+            INFO "已在 Unraid 的 /boot/config/go 中配置开机自启"
         else
-            echo -e "\n# 自动挂载配置" >> /etc/rc.local
-            echo -e "/usr/bin/mount_ailg \"$1\"" >> /etc/rc.local
+            INFO "已存在自动挂载配置，跳过添加"
         fi
-        echo -e "已在/etc/rc.local为您配置开机自启，如果失败请将以下命令自行配置开机启动：\033[1;33m/usr/bin/mount_ailg \"$1\"\033[0m"
+    elif [[ $OSNAME == "systemd" ]];then
+        local service_file="/etc/systemd/system/${service_name}.service"
+
+        cat > "$service_file" << EOF
+[Unit]
+Description=Auto mount AILG image: ${img_name}
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mount_ailg "${img_path}"
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+        systemctl daemon-reload
+        systemctl enable "${service_name}.service"
+
+        INFO "已创建 systemd 服务: ${service_name}"
+        INFO "服务将在开机后自动挂载镜像"
+    elif [[ $OSNAME == "other" ]];then
+        local wrapper_script="/usr/bin/mount_ailg_wrapper_${img_name}"
+
+        cat > "$wrapper_script" << 'WRAPPEOF'
+#!/bin/bash
+IMG_PATH="$1"
+LOG_FILE="/tmp/mount_ailg_boot.log"
+
+wait_for_ready() {
+    local max_wait=120
+    local waited=0
+
+    while [ $waited -lt $max_wait ]; do
+        if touch /tmp/test_write 2>/dev/null; then
+            rm -f /tmp/test_write
+            break
+        fi
+        sleep 2
+        waited=$((waited + 2))
+    done
+
+    if command -v docker >/dev/null 2>&1; then
+        while [ $waited -lt $max_wait ]; do
+            if docker info >/dev/null 2>&1; then
+                break
+            fi
+            sleep 2
+            waited=$((waited + 2))
+        done
+    fi
+
+    sleep 5
+}
+
+{
+    echo "=== $(date '+%Y-%m-%d %H:%M:%S') 开始自动挂载 ==="
+    wait_for_ready
+    /usr/bin/mount_ailg "$IMG_PATH"
+    echo "=== $(date '+%Y-%m-%d %H:%M:%S') 挂载完成，退出码: $? ==="
+} >> "$LOG_FILE" 2>&1
+WRAPPEOF
+
+        chmod +x "$wrapper_script"
+
+        {
+            echo "PATH=/usr/sbin:/usr/bin:/sbin:/bin"
+            echo "@reboot sleep 30 && $wrapper_script \"${img_path}\""
+        } > /tmp/cronjob.tmp
+
+        if crontab -l 2>/dev/null | grep -v mount_ailg >> /tmp/cronjob.tmp; then
+            :
+        fi
+
+        crontab /tmp/cronjob.tmp
+        rm -f /tmp/cronjob.tmp
+
+        INFO "已在 crontab 中配置开机自启"
+        INFO "日志将输出到: /tmp/mount_ailg_boot.log"
+    else
+        if [ ! -f /etc/rc.local ]; then
+            echo '#!/bin/bash' > /etc/rc.local
+            chmod +x /etc/rc.local
+        fi
+
+        if grep -qF -- "$img_path" /etc/rc.local; then
+            INFO "已存在自动挂载配置，跳过添加"
+        else
+            echo -e "\n# 自动挂载 AILG 镜像" >> /etc/rc.local
+            echo -e "(sleep 60 && /usr/bin/mount_ailg \"${img_path}\") &" >> /etc/rc.local
+            chmod +x /etc/rc.local
+            INFO "已在 /etc/rc.local 中配置开机自启"
+        fi
     fi
 }
 
