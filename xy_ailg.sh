@@ -3619,18 +3619,18 @@ update_data() {
     INFO "正在更新小雅的data文件……"
     docker_name="$(docker ps -a | grep -E 'ailg/g-box' | awk '{print $NF}' | head -n1)"
     if [ -n "${docker_name}" ]; then
-        files=("version.txt" "index.zip" "update.zip" "tvbox.zip")  
+        files=("version.txt" "index.zip" "update.zip" "tvbox.zip")
         url_base="https://ailg.ggbond.org/"
         download_dir="/www/data"
 
         mkdir -p /tmp/data
-        cd /tmp/data    
+        cd /tmp/data
         rm -rf /tmp/data/*
 
         download_file() {
             local file=$1
             local retries=3
-            local success=1 
+            local success=1
 
             for ((i=1; i<=retries; i++)); do
                 if curl -s -O ${url_base}${file}; then
@@ -3639,21 +3639,21 @@ update_data() {
                         filename=$(basename "$file")
                         threshold=500000
                         [[ "$filename" == "update.zip" ]] && threshold=50000
-                        
+
                         if [[ $(stat -c%s "${file}") -gt $threshold ]]; then
                             success=0
                             break
                         else
                             WARN "${file}文件大小不足（要求：$threshold 字节），重试..."
                         fi
-                    else    
+                    else
                         success=0
                         break
                     fi
                 else
                     ERROR "${file}下载失败，重试..."
                 fi
-            done    
+            done
 
             return ${success}
         }
@@ -3666,21 +3666,35 @@ update_data() {
             else
                 all_success=0
                 ERROR "${file}下载失败，程序退出！"
-                exit 1  
+                exit 1
             fi
         done
 
         if [[ ${all_success} -eq 1 ]]; then
             INFO "所有文件更新成功，正在为您重启G-Box容器……"
-            docker restart ${docker_name}  
+            docker restart ${docker_name}
             INFO "G-Box容器已成功重启，请检查！"
         else
             ERROR "部分文件下载失败，程序退出！"
             exit 1
         fi
-    else    
+    else
         ERROR "未找到G-Box容器，程序退出！"
         exit 1
+    fi
+
+    [ -z "${config_dir}" ] && get_config_path
+    if [ ! -f "${config_dir}/strm.txt" ]; then
+        INFO "未检测到strm.txt，正在下载并解压..."
+        local strm_tmp_zip="/tmp/strm.zip"
+        local url_base="https://ailg.ggbond.org/"
+        if curl -s -o "${strm_tmp_zip}" ${url_base}strm.zip && unzip -t "${strm_tmp_zip}" >/dev/null 2>&1; then
+            unzip -q -o "${strm_tmp_zip}" -d "${config_dir}"
+            INFO "strm.txt已解压到 ${config_dir}"
+        else
+            WARN "strm.zip下载或验证失败，跳过"
+        fi
+        rm -f "${strm_tmp_zip}"
     fi
 }
 
