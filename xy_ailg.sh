@@ -3619,54 +3619,53 @@ update_data() {
     INFO "正在更新小雅的data文件……"
     docker_name="$(docker ps -a | grep -E 'ailg/g-box' | awk '{print $NF}' | head -n1)"
     if [ -n "${docker_name}" ]; then
-        files=("version.txt" "index.zip" "update.zip" "tvbox.zip")
-        url_base="https://ailg.ggbond.org/"
-        download_dir="/www/data"
+        local url_base="https://ailg.ggbond.org/"
+        local files=("version.txt" "index.zip" "update.zip" "tvbox.zip" "strm.zip")
+        local download_dir="/www/data"
 
         mkdir -p /tmp/data
         cd /tmp/data
         rm -rf /tmp/data/*
 
-        download_file() {
-            local file=$1
-            local retries=3
-            local success=1
-
-            for ((i=1; i<=retries; i++)); do
-                if curl -s -O ${url_base}${file}; then
-                    INFO "${file}下载成功"
-                        if [[ ${file} == *.zip ]]; then
-                        filename=$(basename "$file")
-                        threshold=500000
-                        [[ "$filename" == "update.zip" ]] && threshold=50000
-
-                        if [[ $(stat -c%s "${file}") -gt $threshold ]]; then
-                            success=0
+        all_success=1
+        for file in "${files[@]}"; do
+            # 下载文件（重试3次）
+            for ((i=1; i<=3; i++)); do
+                if curl -s -o "${file}" ${url_base}${file}; then
+                    # 验证文件
+                    if [[ ${file} == *.zip ]]; then
+                        if unzip -t "${file}" >/dev/null 2>&1; then
+                            INFO "${file}下载并验证成功"
                             break
                         else
-                            WARN "${file}文件大小不足（要求：$threshold 字节），重试..."
+                            WARN "${file}验证失败，重试... ($i/3)"
+                            rm -f "${file}"
                         fi
                     else
-                        success=0
-                        break
+                        if [ -z "$(cat "${file}" | tr -d '0-9.\n')" ]; then
+                            INFO "${file}下载成功"
+                            break
+                        else
+                            WARN "${file}内容格式错误，重试... ($i/3)"
+                            rm -f "${file}"
+                        fi
                     fi
                 else
-                    ERROR "${file}下载失败，重试..."
+                    WARN "${file}下载失败，重试... ($i/3)"
+                fi
+
+                # 最后一次重试失败
+                if [ $i -eq 3 ] && [ ! -f "${file}" ]; then
+                    all_success=0
+                    ERROR "${file}下载失败，程序退出！"
+                    exit 1
                 fi
             done
 
-            return ${success}
-        }
-
-        all_success=1
-        for file in "${files[@]}"; do
-            if download_file ${file}; then
+            # 复制到容器
+            if [ -f "${file}" ]; then
                 docker exec ${docker_name} mkdir -p ${download_dir}
                 docker cp ${file} ${docker_name}:${download_dir}
-            else
-                all_success=0
-                ERROR "${file}下载失败，程序退出！"
-                exit 1
             fi
         done
 
@@ -3681,20 +3680,6 @@ update_data() {
     else
         ERROR "未找到G-Box容器，程序退出！"
         exit 1
-    fi
-
-    [ -z "${config_dir}" ] && get_config_path
-    if [ ! -f "${config_dir}/strm.txt" ]; then
-        INFO "未检测到strm.txt，正在下载并解压..."
-        local strm_tmp_zip="/tmp/strm.zip"
-        local url_base="https://ailg.ggbond.org/"
-        if curl -s -o "${strm_tmp_zip}" ${url_base}strm.zip && unzip -t "${strm_tmp_zip}" >/dev/null 2>&1; then
-            unzip -q -o "${strm_tmp_zip}" -d "${config_dir}"
-            INFO "strm.txt已解压到 ${config_dir}"
-        else
-            WARN "strm.zip下载或验证失败，跳过"
-        fi
-        rm -f "${strm_tmp_zip}"
     fi
 }
 
